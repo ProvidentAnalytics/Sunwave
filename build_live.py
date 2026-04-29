@@ -335,23 +335,36 @@ LOADER_JS = """
     }
   }
 
-  // Init MSAL once page is ready
-  function boot(){
-    if (!window.msal) { setTimeout(boot, 50); return; }
-    msalInstance = new msal.PublicClientApplication(msalConfig);
-    msalInstance.initialize().then(() => msalInstance.handleRedirectPromise()).then(() => {
-      const accounts = msalInstance.getAllAccounts();
-      if (accounts.length > 0) {
-        start();
-      } else {
-        document.getElementById('liveCard').innerHTML =
-          '<h1>Sunwave Dashboard</h1>'
-        + '<p>Sign in with your Microsoft 365 account to view live SharePoint data.</p>'
-        + '<button class="live-btn" id="liveLoginBtn">Sign in with Microsoft 365</button>'
-        + '<small>Provident Healthcare Management</small>';
-        document.getElementById('liveLoginBtn').onclick = start;
+  function showLogin(){
+    document.getElementById('liveCard').innerHTML =
+      '<h1>Sunwave Dashboard</h1>'
+    + '<p>Sign in with your Microsoft 365 account to view live SharePoint data.</p>'
+    + '<button class="live-btn" id="liveLoginBtn">Sign in with Microsoft 365</button>'
+    + '<small>Provident Healthcare Management</small>';
+    document.getElementById('liveLoginBtn').onclick = start;
+  }
+
+  // Init MSAL once page + library are ready
+  let bootAttempts = 0;
+  async function boot(){
+    bootAttempts++;
+    if (!window.msal || !window.msal.PublicClientApplication) {
+      if (bootAttempts > 100) { showError(new Error('MSAL.js failed to load from CDN. Check internet connection or content blockers.')); return; }
+      setTimeout(boot, 50); return;
+    }
+    try {
+      msalInstance = new msal.PublicClientApplication(msalConfig);
+      if (typeof msalInstance.initialize === 'function') {
+        await msalInstance.initialize();
       }
-    }).catch(showError);
+      await msalInstance.handleRedirectPromise();
+      const accounts = msalInstance.getAllAccounts();
+      if (accounts.length > 0) start();
+      else showLogin();
+    } catch (e) {
+      console.error('Boot error:', e);
+      showError(e);
+    }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
@@ -421,8 +434,8 @@ html = (
 '<script type="application/json" id="opsData">[]</script>\n'
 '<script type="application/json" id="gnData">[]</script>\n'
 
-# MSAL.js library
-'<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>\n'
+# MSAL.js library (v3 - requires initialize())
+'<script src="https://alcdn.msauth.net/browser/3.10.0/js/msal-browser.min.js"></script>\n'
 
 # Dashboard JS (wrapped)
 '<script>' + DASHBOARD_JS_WRAPPED + '</script>\n'
