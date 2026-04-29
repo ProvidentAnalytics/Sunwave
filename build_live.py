@@ -357,10 +357,17 @@ LOADER_JS = """
       inject('gnData',      t.gn_rows);
       inject('tlData',      t.timeline_rows);
 
-      // Show app + run dashboard
+      // Show app
       document.getElementById('liveOverlay').remove();
       document.getElementById('app').style.display = 'flex';
-      runDashboard();
+      // Now inject the dashboard JS as a real <script> so it parses with
+      // populated data placeholders (its const X = JSON.parse(...) calls read
+      // the real data, and its function defs land at top-level scope so
+      // inline onclick handlers can reach them).
+      const tpl = document.getElementById('dashboardJS');
+      const s = document.createElement('script');
+      s.textContent = tpl.textContent;
+      document.body.appendChild(s);
     } catch (e) {
       console.error(e);
       showError(e);
@@ -410,9 +417,11 @@ LOADER_JS = (LOADER_JS
              .replace('__SITE_PATH__',       SITE_PATH)
              .replace('__FILE_NAME__',       FILE_NAME))
 
-# Strip the static-mode auto-invoke so loader controls when runDashboard() fires.
-# All function declarations stay top-level so inline onclick handlers can find them.
-DASHBOARD_JS_WRAPPED = re.sub(r'^\s*runDashboard\(\);\s*$', '', JS, flags=re.MULTILINE)
+# Keep the dashboard JS exactly as-is (including the runDashboard() invoke at the
+# bottom). It will be injected as a fresh <script> by the loader AFTER the data
+# placeholders have been populated, so all `const X = JSON.parse(...)` calls
+# read real data, not the empty placeholders.
+DASHBOARD_JS_WRAPPED = JS
 
 # ── Compose final HTML ──────────────────────────────────────────────────────
 html = (
@@ -473,8 +482,9 @@ html = (
 '<script>if(!window.msal){document.write(\'<script src="https://unpkg.com/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"><\\/script>\');}</script>\n'
 '<script>if(!window.msal){document.write(\'<script src="https://alcdn.msauth.net/browser/3.10.0/js/msal-browser.min.js"><\\/script>\');}</script>\n'
 
-# Dashboard JS (wrapped)
-'<script>' + DASHBOARD_JS_WRAPPED + '</script>\n'
+# Dashboard JS held as inert template text. Loader copies its textContent into
+# a real <script> element after data placeholders are populated.
+'<script id="dashboardJS" type="text/x-dashboard-js">' + DASHBOARD_JS_WRAPPED + '</script>\n'
 
 # Live data loader
 '<script>' + LOADER_JS + '</script>\n'

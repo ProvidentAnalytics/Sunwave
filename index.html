@@ -568,7 +568,7 @@ h2.section-title {
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"></script>
 <script>if(!window.msal){document.write('<script src="https://unpkg.com/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"><\/script>');}</script>
 <script>if(!window.msal){document.write('<script src="https://alcdn.msauth.net/browser/3.10.0/js/msal-browser.min.js"><\/script>');}</script>
-<script>
+<script id="dashboardJS" type="text/x-dashboard-js">
 /* ===== Data ===== */
 const RAW      = JSON.parse(document.getElementById('generalData').textContent);
 const DATE_IDX = JSON.parse(document.getElementById('dateIdx').textContent);
@@ -1891,6 +1891,7 @@ function runDashboard(){
   showPage('billing');
 }
 // Static mode: auto-run. Live mode: build_live.py removes this line.
+runDashboard();
 </script>
 <script>
 (function(){
@@ -2194,10 +2195,17 @@ function runDashboard(){
       inject('gnData',      t.gn_rows);
       inject('tlData',      t.timeline_rows);
 
-      // Show app + run dashboard
+      // Show app
       document.getElementById('liveOverlay').remove();
       document.getElementById('app').style.display = 'flex';
-      runDashboard();
+      // Now inject the dashboard JS as a real <script> so it parses with
+      // populated data placeholders (its const X = JSON.parse(...) calls read
+      // the real data, and its function defs land at top-level scope so
+      // inline onclick handlers can reach them).
+      const tpl = document.getElementById('dashboardJS');
+      const s = document.createElement('script');
+      s.textContent = tpl.textContent;
+      document.body.appendChild(s);
     } catch (e) {
       console.error(e);
       showError(e);
