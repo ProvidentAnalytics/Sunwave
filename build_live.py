@@ -434,8 +434,10 @@ html = (
 '<script type="application/json" id="opsData">[]</script>\n'
 '<script type="application/json" id="gnData">[]</script>\n'
 
-# MSAL.js library (v3 - requires initialize())
-'<script src="https://alcdn.msauth.net/browser/3.10.0/js/msal-browser.min.js"></script>\n'
+# MSAL.js library (v3 - requires initialize()). Multiple CDNs as fallback.
+'<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"></script>\n'
+'<script>if(!window.msal){document.write(\'<script src="https://unpkg.com/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"><\\/script>\');}</script>\n'
+'<script>if(!window.msal){document.write(\'<script src="https://alcdn.msauth.net/browser/3.10.0/js/msal-browser.min.js"><\\/script>\');}</script>\n'
 
 # Dashboard JS (wrapped)
 '<script>' + DASHBOARD_JS_WRAPPED + '</script>\n'

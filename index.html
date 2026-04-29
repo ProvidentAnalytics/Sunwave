@@ -564,7 +564,9 @@ h2.section-title {
 <script type="application/json" id="authData">[]</script>
 <script type="application/json" id="opsData">[]</script>
 <script type="application/json" id="gnData">[]</script>
-<script src="https://alcdn.msauth.net/browser/3.10.0/js/msal-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"></script>
+<script>if(!window.msal){document.write('<script src="https://unpkg.com/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"><\/script>');}</script>
+<script>if(!window.msal){document.write('<script src="https://alcdn.msauth.net/browser/3.10.0/js/msal-browser.min.js"><\/script>');}</script>
 <script>function runDashboard(){
 
 /* ===== Data ===== */
