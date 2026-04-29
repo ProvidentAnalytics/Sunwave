@@ -572,17 +572,23 @@ function renderBillingSpot(){
 }
 
 function bNavLabel(){
+  if(bNavView==='all')  return 'All Time';
+  if(bNavView==='year') return String(bNavDate.getFullYear());
   if(bNavView==='month')return bNavDate.toLocaleString('default',{month:'long'})+' '+bNavDate.getFullYear();
   if(bNavView==='week'){const ws=gwk(bNavDate),we=new Date(ws);we.setDate(we.getDate()+6);return fd(ws)+' \u2013 '+fd(we);}
   return fd(bNavDate);
 }
 function bNavRange(){
+  if(bNavView==='all')  return{from:new Date(1900,0,1),to:new Date(2100,0,1)};
+  if(bNavView==='year') return{from:new Date(bNavDate.getFullYear(),0,1),to:new Date(bNavDate.getFullYear(),11,31)};
   if(bNavView==='month')return{from:som(bNavDate),to:eom(bNavDate)};
   if(bNavView==='week'){const ws=gwk(bNavDate),we=new Date(ws);we.setDate(we.getDate()+6);return{from:ws,to:we};}
   const d=new Date(bNavDate);return{from:d,to:d};
 }
 function bNavigate(dir){
-  if(bNavView==='month')bNavDate=new Date(bNavDate.getFullYear(),bNavDate.getMonth()+dir,1);
+  if(bNavView==='all') return;
+  if(bNavView==='year') bNavDate=new Date(bNavDate.getFullYear()+dir,0,1);
+  else if(bNavView==='month')bNavDate=new Date(bNavDate.getFullYear(),bNavDate.getMonth()+dir,1);
   else if(bNavView==='week')bNavDate=new Date(bNavDate.getTime()+dir*7*86400000);
   else bNavDate=new Date(bNavDate.getTime()+dir*86400000);
   renderBillingPeriod();
@@ -690,6 +696,8 @@ function renderBillingDetail(){
   document.getElementById('bViewMonth').className='view-btn'+(bNavView==='month'?' active':'');
   document.getElementById('bViewWeek').className='view-btn'+(bNavView==='week'?' active':'');
   document.getElementById('bViewDay').className='view-btn'+(bNavView==='day'?' active':'');
+  document.getElementById('bViewYear').className='view-btn'+(bNavView==='year'?' active':'');
+  document.getElementById('bViewAll').className='view-btn'+(bNavView==='all'?' active':'');
 
   const cols=['deposit_date','payer_name','level_of_care','adjustment_type','service_facility','service_name','line_patient_name','procedure_code','line_charge_amount','line_paid_amount','line_adjusted','line_allocated_amount'];
   const hdrs=['Deposit Date','Payer','Level of Care','Adj Type','Facility','Service','Patient','Code','Charged $','Paid $','Adjusted $','Allocated $'];
@@ -1047,17 +1055,23 @@ for(const r of CROWS){const d=pd(r.adm);if(d){cNavDate=d;break;}}
 if(!cNavDate)cNavDate=new Date();
 
 function cNavRange(){
+  if(cNavView==='all')  return{from:new Date(1900,0,1),to:new Date(2100,0,1)};
+  if(cNavView==='year') return{from:new Date(cNavDate.getFullYear(),0,1),to:new Date(cNavDate.getFullYear(),11,31)};
   if(cNavView==='month')return{from:som(cNavDate),to:eom(cNavDate)};
   if(cNavView==='week'){const ws=gwk(cNavDate),we=new Date(ws);we.setDate(we.getDate()+6);return{from:ws,to:we};}
   return{from:new Date(cNavDate),to:new Date(cNavDate)};
 }
 function cNavLabel(){
+  if(cNavView==='all')  return 'All Time';
+  if(cNavView==='year') return String(cNavDate.getFullYear());
   if(cNavView==='month')return cNavDate.toLocaleString('default',{month:'long'})+' '+cNavDate.getFullYear();
   if(cNavView==='week'){const{from,to}=cNavRange();return fd(from)+' \u2013 '+fd(to);}
   return fd(cNavDate);
 }
 function cNavigate(dir){
-  if(cNavView==='month')cNavDate=new Date(cNavDate.getFullYear(),cNavDate.getMonth()+dir,1);
+  if(cNavView==='all') return;
+  if(cNavView==='year') cNavDate=new Date(cNavDate.getFullYear()+dir,0,1);
+  else if(cNavView==='month')cNavDate=new Date(cNavDate.getFullYear(),cNavDate.getMonth()+dir,1);
   else if(cNavView==='week')cNavDate=new Date(cNavDate.getTime()+dir*7*86400000);
   else cNavDate=new Date(cNavDate.getTime()+dir*86400000);
   renderCensusBreakdowns();
@@ -1075,6 +1089,8 @@ function renderCensusBreakdowns(){
   document.getElementById('cViewMonth').className='view-btn'+(cNavView==='month'?' active':'');
   document.getElementById('cViewWeek').className='view-btn'+(cNavView==='week'?' active':'');
   document.getElementById('cViewDay').className='view-btn'+(cNavView==='day'?' active':'');
+  document.getElementById('cViewYear').className='view-btn'+(cNavView==='year'?' active':'');
+  document.getElementById('cViewAll').className='view-btn'+(cNavView==='all'?' active':'');
 
   const{from,to}=cNavRange();
   const admits=cAdmits(CROWS,from,to);
@@ -1209,17 +1225,23 @@ for(const r of OROWS){const d=pd(r.co);if(d){mktNavDate=d;break;}}
 if(!mktNavDate)mktNavDate=new Date();
 
 function mktNavRange(){
+  if(mktNavView==='all')  return{from:new Date(1900,0,1),to:new Date(2100,0,1)};
+  if(mktNavView==='year') return{from:new Date(mktNavDate.getFullYear(),0,1),to:new Date(mktNavDate.getFullYear(),11,31)};
   if(mktNavView==='month')return{from:som(mktNavDate),to:eom(mktNavDate)};
   if(mktNavView==='week'){const ws=gwk(mktNavDate),we=new Date(ws);we.setDate(we.getDate()+6);return{from:ws,to:we};}
   return{from:new Date(mktNavDate),to:new Date(mktNavDate)};
 }
 function mktNavLabel(){
+  if(mktNavView==='all')  return 'All Time';
+  if(mktNavView==='year') return String(mktNavDate.getFullYear());
   if(mktNavView==='month')return mktNavDate.toLocaleString('default',{month:'long'})+' '+mktNavDate.getFullYear();
   if(mktNavView==='week'){const{from,to}=mktNavRange();return fd(from)+' \u2013 '+fd(to);}
   return fd(mktNavDate);
 }
 function mktNavigate(dir){
-  if(mktNavView==='month')mktNavDate=new Date(mktNavDate.getFullYear(),mktNavDate.getMonth()+dir,1);
+  if(mktNavView==='all') return;
+  if(mktNavView==='year') mktNavDate=new Date(mktNavDate.getFullYear()+dir,0,1);
+  else if(mktNavView==='month')mktNavDate=new Date(mktNavDate.getFullYear(),mktNavDate.getMonth()+dir,1);
   else if(mktNavView==='week')mktNavDate=new Date(mktNavDate.getTime()+dir*7*86400000);
   else mktNavDate=new Date(mktNavDate.getTime()+dir*86400000);
   renderMarketingDetail();
@@ -1245,6 +1267,8 @@ function renderMarketingDetail(){
   document.getElementById('mktViewMonth').className='view-btn'+(mktNavView==='month'?' active':'');
   document.getElementById('mktViewWeek').className='view-btn'+(mktNavView==='week'?' active':'');
   document.getElementById('mktViewDay').className='view-btn'+(mktNavView==='day'?' active':'');
+  document.getElementById('mktViewYear').className='view-btn'+(mktNavView==='year'?' active':'');
+  document.getElementById('mktViewAll').className='view-btn'+(mktNavView==='all'?' active':'');
   const{from,to}=mktNavRange();
   const rows=mFilter(OROWS,from,to);
   const m=mMetrics(rows);
@@ -1339,17 +1363,23 @@ for(const r of OROWS){const d=pd(r.co);if(d){oppNavDate=d;break;}}
 if(!oppNavDate)oppNavDate=new Date();
 
 function oppNavRange(){
+  if(oppNavView==='all')  return{from:new Date(1900,0,1),to:new Date(2100,0,1)};
+  if(oppNavView==='year') return{from:new Date(oppNavDate.getFullYear(),0,1),to:new Date(oppNavDate.getFullYear(),11,31)};
   if(oppNavView==='month')return{from:som(oppNavDate),to:eom(oppNavDate)};
   if(oppNavView==='week'){const ws=gwk(oppNavDate),we=new Date(ws);we.setDate(we.getDate()+6);return{from:ws,to:we};}
   return{from:new Date(oppNavDate),to:new Date(oppNavDate)};
 }
 function oppNavLabel(){
+  if(oppNavView==='all')  return 'All Time';
+  if(oppNavView==='year') return String(oppNavDate.getFullYear());
   if(oppNavView==='month')return oppNavDate.toLocaleString('default',{month:'long'})+' '+oppNavDate.getFullYear();
   if(oppNavView==='week'){const{from,to}=oppNavRange();return fd(from)+' \u2013 '+fd(to);}
   return fd(oppNavDate);
 }
 function oppNavigate(dir){
-  if(oppNavView==='month')oppNavDate=new Date(oppNavDate.getFullYear(),oppNavDate.getMonth()+dir,1);
+  if(oppNavView==='all') return;
+  if(oppNavView==='year') oppNavDate=new Date(oppNavDate.getFullYear()+dir,0,1);
+  else if(oppNavView==='month')oppNavDate=new Date(oppNavDate.getFullYear(),oppNavDate.getMonth()+dir,1);
   else if(oppNavView==='week')oppNavDate=new Date(oppNavDate.getTime()+dir*7*86400000);
   else oppNavDate=new Date(oppNavDate.getTime()+dir*86400000);
   renderOpportunities();
@@ -1363,6 +1393,8 @@ function renderOpportunities(){
   document.getElementById('oppViewMonth').className='view-btn'+(oppNavView==='month'?' active':'');
   document.getElementById('oppViewWeek').className='view-btn'+(oppNavView==='week'?' active':'');
   document.getElementById('oppViewDay').className='view-btn'+(oppNavView==='day'?' active':'');
+  document.getElementById('oppViewYear').className='view-btn'+(oppNavView==='year'?' active':'');
+  document.getElementById('oppViewAll').className='view-btn'+(oppNavView==='all'?' active':'');
   const{from,to}=oppNavRange();
   let rows=mFilter(OROWS,from,to);
   if(oppSearch){const s=oppSearch.toLowerCase();rows=rows.filter(r=>Object.values(r).some(v=>String(v).toLowerCase().includes(s)));}
@@ -1507,17 +1539,23 @@ for(const r of GNROWS){const d=pd(r.date);if(d){clinNavDate=d;break;}}
 if(!clinNavDate)clinNavDate=new Date();
 
 function clinNavRange(){
+  if(clinNavView==='all')  return{from:new Date(1900,0,1),to:new Date(2100,0,1)};
+  if(clinNavView==='year') return{from:new Date(clinNavDate.getFullYear(),0,1),to:new Date(clinNavDate.getFullYear(),11,31)};
   if(clinNavView==='month')return{from:som(clinNavDate),to:eom(clinNavDate)};
   if(clinNavView==='week'){const ws=gwk(clinNavDate),we=new Date(ws);we.setDate(we.getDate()+6);return{from:ws,to:we};}
   return{from:new Date(clinNavDate),to:new Date(clinNavDate)};
 }
 function clinNavLabel(){
+  if(clinNavView==='all')  return 'All Time';
+  if(clinNavView==='year') return String(clinNavDate.getFullYear());
   if(clinNavView==='month')return clinNavDate.toLocaleString('default',{month:'long'})+' '+clinNavDate.getFullYear();
   if(clinNavView==='week'){const{from,to}=clinNavRange();return fd(from)+' \u2013 '+fd(to);}
   return fd(clinNavDate);
 }
 function clinNavigate(dir){
-  if(clinNavView==='month')clinNavDate=new Date(clinNavDate.getFullYear(),clinNavDate.getMonth()+dir,1);
+  if(clinNavView==='all') return;
+  if(clinNavView==='year') clinNavDate=new Date(clinNavDate.getFullYear()+dir,0,1);
+  else if(clinNavView==='month')clinNavDate=new Date(clinNavDate.getFullYear(),clinNavDate.getMonth()+dir,1);
   else if(clinNavView==='week')clinNavDate=new Date(clinNavDate.getTime()+dir*7*86400000);
   else clinNavDate=new Date(clinNavDate.getTime()+dir*86400000);
   renderClinical();
@@ -1548,6 +1586,8 @@ function renderClinical(){
   document.getElementById('clinViewMonth').className='view-btn'+(clinNavView==='month'?' active':'');
   document.getElementById('clinViewWeek').className='view-btn'+(clinNavView==='week'?' active':'');
   document.getElementById('clinViewDay').className='view-btn'+(clinNavView==='day'?' active':'');
+  document.getElementById('clinViewYear').className='view-btn'+(clinNavView==='year'?' active':'');
+  document.getElementById('clinViewAll').className='view-btn'+(clinNavView==='all'?' active':'');
   const{from,to}=clinNavRange();
   const rows=gnFilter(GNROWS,from,to);
   const totalMins=rows.reduce((s,r)=>s+r.mins,0);
@@ -1612,17 +1652,23 @@ for(const r of OPROWS2){const d=pd(r.date);if(d){opsNavDate=d;break;}}
 if(!opsNavDate)opsNavDate=new Date();
 
 function opsNavRange(){
+  if(opsNavView==='all')  return{from:new Date(1900,0,1),to:new Date(2100,0,1)};
+  if(opsNavView==='year') return{from:new Date(opsNavDate.getFullYear(),0,1),to:new Date(opsNavDate.getFullYear(),11,31)};
   if(opsNavView==='month')return{from:som(opsNavDate),to:eom(opsNavDate)};
   if(opsNavView==='week'){const ws=gwk(opsNavDate),we=new Date(ws);we.setDate(we.getDate()+6);return{from:ws,to:we};}
   return{from:new Date(opsNavDate),to:new Date(opsNavDate)};
 }
 function opsNavLabel(){
+  if(opsNavView==='all')  return 'All Time';
+  if(opsNavView==='year') return String(opsNavDate.getFullYear());
   if(opsNavView==='month')return opsNavDate.toLocaleString('default',{month:'long'})+' '+opsNavDate.getFullYear();
   if(opsNavView==='week'){const{from,to}=opsNavRange();return fd(from)+' \u2013 '+fd(to);}
   return fd(opsNavDate);
 }
 function opsNavigate(dir){
-  if(opsNavView==='month')opsNavDate=new Date(opsNavDate.getFullYear(),opsNavDate.getMonth()+dir,1);
+  if(opsNavView==='all') return;
+  if(opsNavView==='year') opsNavDate=new Date(opsNavDate.getFullYear()+dir,0,1);
+  else if(opsNavView==='month')opsNavDate=new Date(opsNavDate.getFullYear(),opsNavDate.getMonth()+dir,1);
   else if(opsNavView==='week')opsNavDate=new Date(opsNavDate.getTime()+dir*7*86400000);
   else opsNavDate=new Date(opsNavDate.getTime()+dir*86400000);
   renderOpsDetail();
@@ -1635,6 +1681,8 @@ function renderOpsDetail(){
   document.getElementById('opsViewMonth').className='view-btn'+(opsNavView==='month'?' active':'');
   document.getElementById('opsViewWeek').className='view-btn'+(opsNavView==='week'?' active':'');
   document.getElementById('opsViewDay').className='view-btn'+(opsNavView==='day'?' active':'');
+  document.getElementById('opsViewYear').className='view-btn'+(opsNavView==='year'?' active':'');
+  document.getElementById('opsViewAll').className='view-btn'+(opsNavView==='all'?' active':'');
   const{from,to}=opsNavRange();
   const rows=OPROWS2.filter(r=>{const d=pd(r.date);return d&&d>=from&&d<=to;});
   document.getElementById('opsKpiAdmits').textContent=rows.length;
@@ -1771,6 +1819,8 @@ CENSUS_SECTION = """
         <button id="cViewMonth" class="view-btn active" onclick="cSetView('month')">Month</button>
         <button id="cViewWeek"  class="view-btn"        onclick="cSetView('week')">Week</button>
         <button id="cViewDay"   class="view-btn"        onclick="cSetView('day')">Day</button>
+        <button id="cViewYear"  class="view-btn"        onclick="cSetView('year')">Year</button>
+        <button id="cViewAll"   class="view-btn"        onclick="cSetView('all')">Show All</button>
       </div>
       <div class="nav-btns">
         <button class="period-nav-btn" onclick="cNavigate(-1)">&#8249;</button>
@@ -1821,6 +1871,8 @@ BILLING_SECTION = """
         <button id="bViewMonth" class="view-btn active" onclick="bSetView('month')">Month</button>
         <button id="bViewWeek"  class="view-btn"        onclick="bSetView('week')">Week</button>
         <button id="bViewDay"   class="view-btn"        onclick="bSetView('day')">Day</button>
+        <button id="bViewYear"  class="view-btn"        onclick="bSetView('year')">Year</button>
+        <button id="bViewAll"   class="view-btn"        onclick="bSetView('all')">Show All</button>
       </div>
       <div class="nav-btns">
         <button class="period-nav-btn" onclick="bNavigate(-1)">&#8249;</button>
@@ -1869,6 +1921,8 @@ MARKETING_SECTION = """
         <button id="mktViewMonth" class="view-btn active" onclick="mktSetView('month')">Month</button>
         <button id="mktViewWeek"  class="view-btn"        onclick="mktSetView('week')">Week</button>
         <button id="mktViewDay"   class="view-btn"        onclick="mktSetView('day')">Day</button>
+        <button id="mktViewYear"  class="view-btn"        onclick="mktSetView('year')">Year</button>
+        <button id="mktViewAll"   class="view-btn"        onclick="mktSetView('all')">Show All</button>
       </div>
       <div class="nav-btns">
         <button class="period-nav-btn" onclick="mktNavigate(-1)">&#8249;</button>
@@ -1906,6 +1960,8 @@ OPPORTUNITIES_SECTION = """
         <button id="oppViewMonth" class="view-btn active" onclick="oppSetView('month')">Month</button>
         <button id="oppViewWeek"  class="view-btn"        onclick="oppSetView('week')">Week</button>
         <button id="oppViewDay"   class="view-btn"        onclick="oppSetView('day')">Day</button>
+        <button id="oppViewYear"  class="view-btn"        onclick="oppSetView('year')">Year</button>
+        <button id="oppViewAll"   class="view-btn"        onclick="oppSetView('all')">Show All</button>
       </div>
       <div class="nav-btns">
         <button class="period-nav-btn" onclick="oppNavigate(-1)">&#8249;</button>
@@ -1960,6 +2016,8 @@ CLINICAL_SECTION = """
         <button id="clinViewMonth" class="view-btn active" onclick="clinSetView('month')">Month</button>
         <button id="clinViewWeek"  class="view-btn"        onclick="clinSetView('week')">Week</button>
         <button id="clinViewDay"   class="view-btn"        onclick="clinSetView('day')">Day</button>
+        <button id="clinViewYear"  class="view-btn"        onclick="clinSetView('year')">Year</button>
+        <button id="clinViewAll"   class="view-btn"        onclick="clinSetView('all')">Show All</button>
       </div>
       <div class="nav-btns">
         <button class="period-nav-btn" onclick="clinNavigate(-1)">&#8249;</button>
@@ -1995,6 +2053,8 @@ OPERATIONS_SECTION = """
         <button id="opsViewMonth" class="view-btn active" onclick="opsSetView('month')">Month</button>
         <button id="opsViewWeek"  class="view-btn"        onclick="opsSetView('week')">Week</button>
         <button id="opsViewDay"   class="view-btn"        onclick="opsSetView('day')">Day</button>
+        <button id="opsViewYear"  class="view-btn"        onclick="opsSetView('year')">Year</button>
+        <button id="opsViewAll"   class="view-btn"        onclick="opsSetView('all')">Show All</button>
       </div>
       <div class="nav-btns">
         <button class="period-nav-btn" onclick="opsNavigate(-1)">&#8249;</button>

@@ -71,6 +71,22 @@ LOADER_JS = """
   const FILE_NAME       = '__FILE_NAME__';
 
   let msalInstance;
+  const CACHE_KEY = 'sunwave_data_v3';
+  const CACHE_VERSION = 3;
+  function readCache(){
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) return null;
+      const c = JSON.parse(raw);
+      if (!c || c.v !== CACHE_VERSION || !c.data) return null;
+      return c;
+    } catch(e) { return null; }
+  }
+  function writeCache(data){
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ v: CACHE_VERSION, ts: Date.now(), data: data }));
+    } catch(e) { console.warn('Cache write failed (storage full?):', e); }
+  }
   function setProgress(s){ const e=document.getElementById('liveMsg'); if(e) e.textContent=s; }
   function showError(e){
     const card = document.getElementById('liveCard');
@@ -335,39 +351,75 @@ LOADER_JS = """
 
   function inject(id, obj){ document.getElementById(id).textContent = JSON.stringify(obj); }
 
+  function applyData(t){
+    inject('generalData', t.raw_data);
+    inject('dateIdx',     t.tab_config);
+    inject('billingData', t.billing_rows);
+    inject('censusData',  t.census_rows);
+    inject('oppData',     t.opp_rows);
+    inject('authData',    t.auth_rows);
+    inject('opsData',     t.ops_rows);
+    inject('gnData',      t.gn_rows);
+    inject('tlData',      t.timeline_rows);
+  }
+
+  function bootDashboard(){
+    document.getElementById('liveOverlay').remove();
+    document.getElementById('app').style.display = 'flex';
+    const tpl = document.getElementById('dashboardJS');
+    const s = document.createElement('script');
+    s.textContent = tpl.textContent;
+    document.body.appendChild(s);
+  }
+
+  function showFreshIndicator(){
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;top:8px;right:14px;background:#217346;color:#fff;padding:5px 10px;border-radius:4px;font-size:11px;font-weight:600;z-index:9999;box-shadow:0 2px 6px rgba(0,0,0,.3);cursor:pointer;font-family:Arial,sans-serif';
+    el.textContent = '↻ Fresh data available — click to refresh';
+    el.onclick = () => location.reload();
+    document.body.appendChild(el);
+    setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .5s'; setTimeout(() => el.remove(), 500); }, 8000);
+  }
+
+  async function fetchFresh(){
+    const token = await getToken();
+    const sheets = await fetchWorkbook(token);
+    const t = transform(sheets);
+    writeCache(t);
+    return t;
+  }
+
   async function start(){
+    // ── Cached path: instant load, then refresh in background ──
+    const cached = readCache();
+    if (cached && cached.data) {
+      applyData(cached.data);
+      bootDashboard();
+      // Refresh in background, no UI blocking
+      setTimeout(async () => {
+        try {
+          const fresh = await fetchFresh();
+          // Compare hashes/sizes to decide whether to notify
+          const changed = JSON.stringify(fresh).length !== JSON.stringify(cached.data).length;
+          if (changed) showFreshIndicator();
+        } catch (e) { console.warn('Background refresh failed:', e); }
+      }, 200);
+      return;
+    }
+
+    // ── Cold path: show loader, fetch, render ──
     document.getElementById('liveCard').innerHTML =
       '<div class="spinner"></div><h1>Loading dashboard</h1>'
-    + '<p>Connecting to SharePoint...</p>'
+    + '<p>Connecting to SharePoint... (first-time setup, ~30s)</p>'
     + '<div class="live-progress" id="liveMsg">Authenticating...</div>';
-
     try {
       const token = await getToken();
       const sheets = await fetchWorkbook(token);
       setProgress('Processing data...');
       const t = transform(sheets);
-
-      inject('generalData', t.raw_data);
-      inject('dateIdx',     t.tab_config);
-      inject('billingData', t.billing_rows);
-      inject('censusData',  t.census_rows);
-      inject('oppData',     t.opp_rows);
-      inject('authData',    t.auth_rows);
-      inject('opsData',     t.ops_rows);
-      inject('gnData',      t.gn_rows);
-      inject('tlData',      t.timeline_rows);
-
-      // Show app
-      document.getElementById('liveOverlay').remove();
-      document.getElementById('app').style.display = 'flex';
-      // Now inject the dashboard JS as a real <script> so it parses with
-      // populated data placeholders (its const X = JSON.parse(...) calls read
-      // the real data, and its function defs land at top-level scope so
-      // inline onclick handlers can reach them).
-      const tpl = document.getElementById('dashboardJS');
-      const s = document.createElement('script');
-      s.textContent = tpl.textContent;
-      document.body.appendChild(s);
+      writeCache(t);
+      applyData(t);
+      bootDashboard();
     } catch (e) {
       console.error(e);
       showError(e);
