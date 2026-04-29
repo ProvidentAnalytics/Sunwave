@@ -77,7 +77,9 @@ odf['admission_date']= pd.to_datetime(odf['admission_date'],errors='coerce')
 opp_rows = []
 for _, r in odf.iterrows():
     co = r['created_on']; ad = r['admission_date']
+    oid = r['opportunity_id']
     opp_rows.append({
+        'id':          '' if pd.isna(oid) else str(int(oid)) if isinstance(oid,(int,float)) else str(oid).strip(),
         'co':          co.strftime('%m/%d/%Y') if pd.notna(co) else '',
         'adm':         ad.strftime('%m/%d/%Y') if pd.notna(ad) and ad.year>2000 else '',
         'outcome':     str(r['outcome']).strip()           if pd.notna(r['outcome'])            else '',
@@ -88,6 +90,24 @@ for _, r in odf.iterrows():
         'lost_r':      str(r['lost reason']).strip()       if pd.notna(r['lost reason'])        else '',
         'aband_r':     str(r['abandoned reason']).strip()  if pd.notna(r['abandoned reason'])   else '',
         'name':        str(r['patient name']).strip()      if pd.notna(r['patient name'])       else '',
+    })
+
+# ── Timeline data (Opportunity expand/collapse) ──────────────────────────────
+tldf = pd.read_excel('MASTER_Sunwave_New_PowerQuerry.xlsx', sheet_name='Timeline')
+tldf['activity_date'] = pd.to_datetime(tldf['activity_date'], errors='coerce')
+timeline_rows = []
+for _, r in tldf.iterrows():
+    ad = r['activity_date']
+    oid = r['opportunity_id']
+    timeline_rows.append({
+        'oid':     '' if pd.isna(oid) else str(int(oid)) if isinstance(oid,(int,float)) else str(oid).strip(),
+        'date':    ad.strftime('%m/%d/%Y %I:%M %p') if pd.notna(ad) else '',
+        'subject': str(r['task_subject']).strip()    if pd.notna(r['task_subject'])    else '',
+        'type':    str(r['type']).strip()            if pd.notna(r['type'])            else '',
+        'by':      str(r['created_by_name']).strip() if pd.notna(r['created_by_name']) else '',
+        'wf':      str(r['workflow_status']).strip() if pd.notna(r['workflow_status']) else '',
+        'text':    str(r['text']).strip()            if pd.notna(r['text'])            else '',
+        'sortKey': ad.timestamp() if pd.notna(ad) else 0,
     })
 
 # ── Report Auth data (Utilization Review) ────────────────────────────────────
@@ -154,6 +174,7 @@ opp_js      = json.dumps(opp_rows,     separators=(',',':'), ensure_ascii=True).
 auth_js     = json.dumps(auth_rows,    separators=(',',':'), ensure_ascii=True).replace('</', '<\\/')
 ops_js      = json.dumps(ops_rows,     separators=(',',':'), ensure_ascii=True).replace('</', '<\\/')
 gnotes_js   = json.dumps(gnotes_rows,  separators=(',',':'), ensure_ascii=True).replace('</', '<\\/')
+timeline_js = json.dumps(timeline_rows,separators=(',',':'), ensure_ascii=True).replace('</', '<\\/')
 
 # ── CSS ───────────────────────────────────────────────────────────────────────
 CSS = """
@@ -1283,6 +1304,36 @@ function renderMarketingDetail(){
 /* ═══════════════════════════════════════════════════════════════
    OPPORTUNITIES DETAIL LOGIC
 ═══════════════════════════════════════════════════════════════ */
+const TLROWS = JSON.parse(document.getElementById('tlData').textContent);
+// Index timeline by opportunity_id for fast lookup
+const TL_BY_OID = (function(){
+  const m={};
+  TLROWS.forEach(t=>{ if(!t.oid) return; (m[t.oid]=m[t.oid]||[]).push(t); });
+  // Sort each opportunity's timeline newest first
+  Object.keys(m).forEach(k=>m[k].sort((a,b)=>(b.sortKey||0)-(a.sortKey||0)));
+  return m;
+})();
+const oppExpanded = new Set(); // tracks expanded opportunity ids
+function oppToggle(id){
+  if(oppExpanded.has(id)) oppExpanded.delete(id); else oppExpanded.add(id);
+  renderOpportunities();
+}
+function renderTimelineEntries(oid){
+  const entries = TL_BY_OID[oid] || [];
+  if(!entries.length) return '<div style="padding:14px;color:#999;font-style:italic">No timeline entries for this opportunity.</div>';
+  let h='<div style="padding:8px 14px;background:#f5f8fc"><table style="width:100%;border-collapse:collapse;font-size:11.5px">';
+  h+='<thead><tr style="background:#1a3a5c;color:#fff"><th style="padding:6px 10px;text-align:left">Date</th><th style="padding:6px 10px;text-align:left">Type</th><th style="padding:6px 10px;text-align:left">Status</th><th style="padding:6px 10px;text-align:left">By</th><th style="padding:6px 10px;text-align:left">Note</th></tr></thead><tbody>';
+  entries.forEach(t=>{
+    h+='<tr style="border-bottom:1px solid #e0e6ee;background:#fff"><td style="padding:5px 10px;white-space:nowrap;color:#1a3a5c;font-weight:600">'+esc(t.date)+'</td>'
+      +'<td style="padding:5px 10px;white-space:nowrap">'+esc(t.type)+'</td>'
+      +'<td style="padding:5px 10px;white-space:nowrap">'+esc(t.wf)+'</td>'
+      +'<td style="padding:5px 10px;white-space:nowrap">'+esc(t.by)+'</td>'
+      +'<td style="padding:5px 10px;white-space:normal;max-width:600px">'+esc(t.text||t.subject)+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  return h;
+}
+
 let oppNavView='month',oppNavDate=null,oppSearch='',oppSortCol='co',oppSortAsc=false;
 for(const r of OROWS){const d=pd(r.co);if(d){oppNavDate=d;break;}}
 if(!oppNavDate)oppNavDate=new Date();
@@ -1339,15 +1390,26 @@ function renderOpportunities(){
   Object.entries(insMap).sort((a,b)=>b[1]-a[1]).slice(0,10).forEach(([k,v])=>hi+='<tr><td>'+esc(k)+'</td><td class="num">'+v+'</td><td class="num">'+(rows.length>0?(v/rows.length*100).toFixed(1)+'%':'0%')+'</td></tr>');
   hi+='<tr class="total-row"><td>Total</td><td class="num">'+rows.length+'</td><td class="num">100%</td></tr></tbody></table>';
   document.getElementById('oppInsTable').innerHTML=hi;
-  // Table
-  const cols=['co','name','outcome','stage','loc','ins','ref'];
-  const hdrs=['Created On','Patient','Outcome','Stage','LOC','Insurance','Referral'];
-  let ht='<div class="table-wrap"><table><thead><tr>';
+  // Table with expand/collapse + opportunity ID
+  const cols=['id','co','name','outcome','stage','loc','ins','ref'];
+  const hdrs=['Opportunity ID','Created On','Patient','Outcome','Stage','LOC','Insurance','Referral'];
+  let ht='<div class="table-wrap"><table><thead><tr><th style="width:36px"></th>';
   cols.forEach((c,i)=>{const arr=oppSortCol===c?(oppSortAsc?' &#9650;':' &#9660;'):'';ht+='<th onclick="oppSetSort(\''+c+'\')">'+hdrs[i]+arr+'</th>';});
-  ht+='</tr></thead><tbody>';
+  ht+='<th style="width:80px">Timeline</th></tr></thead><tbody>';
   const pg=rows.slice(0,150);
-  if(!pg.length)ht+='<tr><td colspan="'+cols.length+'" class="no-data">No records.</td></tr>';
-  pg.forEach(r=>{ht+='<tr>';cols.forEach(c=>{ht+='<td title="'+esc(r[c])+'">'+esc(r[c])+'</td>';});ht+='</tr>';});
+  if(!pg.length)ht+='<tr><td colspan="'+(cols.length+2)+'" class="no-data">No records.</td></tr>';
+  pg.forEach(r=>{
+    const isOpen = oppExpanded.has(r.id);
+    const tlCount = (TL_BY_OID[r.id]||[]).length;
+    const arrow = isOpen ? '&#9660;' : '&#9658;';
+    ht+='<tr style="cursor:pointer" onclick="oppToggle(\''+esc(r.id)+'\')">'
+      +'<td style="text-align:center;color:#1a6ec0;font-weight:700">'+arrow+'</td>';
+    cols.forEach(c=>{ht+='<td title="'+esc(r[c])+'">'+esc(r[c])+'</td>';});
+    ht+='<td style="text-align:center;color:#666;font-size:11px">'+(tlCount>0?'<span style="background:#1a6ec0;color:#fff;padding:2px 8px;border-radius:10px;font-weight:600">'+tlCount+'</span>':'-')+'</td></tr>';
+    if(isOpen){
+      ht+='<tr class="tl-row"><td colspan="'+(cols.length+2)+'" style="padding:0;background:#f5f8fc">'+renderTimelineEntries(r.id)+'</td></tr>';
+    }
+  });
   ht+='</tbody></table></div>';
   if(rows.length>150)ht+='<div class="page-info" style="margin-top:6px">Showing 150 of '+rows.length+' records.</div>';
   document.getElementById('oppTableWrap').innerHTML=ht;
@@ -2009,6 +2071,7 @@ html = (
     '<script type="application/json" id="authData">'    + auth_js    + '</script>\n'
     '<script type="application/json" id="opsData">'     + ops_js     + '</script>\n'
     '<script type="application/json" id="gnData">'      + gnotes_js  + '</script>\n'
+    '<script type="application/json" id="tlData">'       + timeline_js+ '</script>\n'
     '<script>' + JS + '</script>\n'
     '</body>\n</html>'
 )

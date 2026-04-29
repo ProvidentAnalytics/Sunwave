@@ -256,6 +256,7 @@ LOADER_JS = """
       const adVal = r[idx('admission_date')];
       const isValidYear = (typeof adVal === 'number') ? (adVal > 36500) : true;
       return {
+        id:      xStr(r[idx('opportunity_id')]),
         co:      xDate(r[idx('created_on')]),
         adm:     isValidYear ? xDate(adVal) : '',
         outcome: xStr(r[idx('outcome')]),
@@ -299,7 +300,37 @@ LOADER_JS = """
       mins:   Math.round(parseFloat(r[idx('length_time')])||0),
     }));
 
-    return { raw_data, tab_config, billing_rows, census_rows, opp_rows, auth_rows, ops_rows, gn_rows };
+    // Timeline rows for Opportunity expand/collapse
+    function xDateTime(v){
+      if (v===null||v===undefined||v==='') return '';
+      if (typeof v === 'number') {
+        const d = new Date(Math.round((v - 25569) * 86400000));
+        const hr = d.getUTCHours(), mn = d.getUTCMinutes();
+        const ampm = hr>=12?'PM':'AM';
+        const h12 = hr%12 === 0 ? 12 : hr%12;
+        return String(d.getUTCMonth()+1).padStart(2,'0')+'/'+String(d.getUTCDate()).padStart(2,'0')+'/'+d.getUTCFullYear()
+          + ' ' + String(h12).padStart(2,'0')+':'+String(mn).padStart(2,'0')+' '+ampm;
+      }
+      return String(v).trim();
+    }
+    function xSortKey(v){
+      if (typeof v === 'number') return v;
+      if (!v) return 0;
+      const d = new Date(String(v));
+      return isNaN(d) ? 0 : d.getTime()/1000;
+    }
+    const timeline_rows = map('Timeline', (r, idx) => ({
+      oid:     xStr(r[idx('opportunity_id')]),
+      date:    xDateTime(r[idx('activity_date')]),
+      subject: xStr(r[idx('task_subject')]),
+      type:    xStr(r[idx('type')]),
+      by:      xStr(r[idx('created_by_name')]),
+      wf:      xStr(r[idx('workflow_status')]),
+      text:    xStr(r[idx('text')]),
+      sortKey: xSortKey(r[idx('activity_date')]),
+    }));
+
+    return { raw_data, tab_config, billing_rows, census_rows, opp_rows, auth_rows, ops_rows, gn_rows, timeline_rows };
   }
 
   function inject(id, obj){ document.getElementById(id).textContent = JSON.stringify(obj); }
@@ -324,6 +355,7 @@ LOADER_JS = """
       inject('authData',    t.auth_rows);
       inject('opsData',     t.ops_rows);
       inject('gnData',      t.gn_rows);
+      inject('tlData',      t.timeline_rows);
 
       // Show app + run dashboard
       document.getElementById('liveOverlay').remove();
@@ -433,6 +465,7 @@ html = (
 '<script type="application/json" id="authData">[]</script>\n'
 '<script type="application/json" id="opsData">[]</script>\n'
 '<script type="application/json" id="gnData">[]</script>\n'
+'<script type="application/json" id="tlData">[]</script>\n'
 
 # MSAL.js library (v3 - requires initialize()). Multiple CDNs as fallback.
 '<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"></script>\n'

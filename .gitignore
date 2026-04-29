@@ -3,3 +3,5 @@ report_data.json
 test_*.js
 __pycache__/
 *.pyc
+.claude/
+SunwaveTimeLine/
