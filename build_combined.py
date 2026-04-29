@@ -1725,28 +1725,30 @@ function renderFieldExplorer(){
 }
 
 // ── Initial renders ────────────────────────────────────────────────────────
-// Initial renders
-renderBillingSpot();
-renderBillingBreakdowns();
-renderBillingTrend();
-renderBillingDetail();
-renderCensusSpot();
-renderCensusTrend();
-renderCensusBreakdowns();
-renderMarketingSpot();
-renderMarketingTrend();
-renderMarketingDetail();
-renderOpportunities();
-renderURSpot();
-renderURTrend();
-renderClinicalSpot();
-renderClinical();
-renderOpsHeatmap();
-renderOpsDetail();
-renderOpsMonthlyIns();
-renderFieldExplorer();
-// Show billing by default
-showPage('billing');
+function runDashboard(){
+  renderBillingSpot();
+  renderBillingBreakdowns();
+  renderBillingTrend();
+  renderBillingDetail();
+  renderCensusSpot();
+  renderCensusTrend();
+  renderCensusBreakdowns();
+  renderMarketingSpot();
+  renderMarketingTrend();
+  renderMarketingDetail();
+  renderOpportunities();
+  renderURSpot();
+  renderURTrend();
+  renderClinicalSpot();
+  renderClinical();
+  renderOpsHeatmap();
+  renderOpsDetail();
+  renderOpsMonthlyIns();
+  renderFieldExplorer();
+  showPage('billing');
+}
+// Static mode: auto-run. Live mode: build_live.py removes this line.
+runDashboard();
 """
 
 # ── HTML ─────────────────────────────────────────────────────────────────────

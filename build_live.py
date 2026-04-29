@@ -410,8 +410,9 @@ LOADER_JS = (LOADER_JS
              .replace('__SITE_PATH__',       SITE_PATH)
              .replace('__FILE_NAME__',       FILE_NAME))
 
-# Wrap dashboard JS in a function so it doesn't auto-execute
-DASHBOARD_JS_WRAPPED = 'function runDashboard(){\n' + JS + '\n}'
+# Strip the static-mode auto-invoke so loader controls when runDashboard() fires.
+# All function declarations stay top-level so inline onclick handlers can find them.
+DASHBOARD_JS_WRAPPED = re.sub(r'^\s*runDashboard\(\);\s*$', '', JS, flags=re.MULTILINE)
 
 # ── Compose final HTML ──────────────────────────────────────────────────────
 html = (

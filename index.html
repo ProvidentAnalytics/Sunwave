@@ -568,8 +568,7 @@ h2.section-title {
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"></script>
 <script>if(!window.msal){document.write('<script src="https://unpkg.com/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"><\/script>');}</script>
 <script>if(!window.msal){document.write('<script src="https://alcdn.msauth.net/browser/3.10.0/js/msal-browser.min.js"><\/script>');}</script>
-<script>function runDashboard(){
-
+<script>
 /* ===== Data ===== */
 const RAW      = JSON.parse(document.getElementById('generalData').textContent);
 const DATE_IDX = JSON.parse(document.getElementById('dateIdx').textContent);
@@ -1869,30 +1868,30 @@ function renderFieldExplorer(){
 }
 
 // ── Initial renders ────────────────────────────────────────────────────────
-// Initial renders
-renderBillingSpot();
-renderBillingBreakdowns();
-renderBillingTrend();
-renderBillingDetail();
-renderCensusSpot();
-renderCensusTrend();
-renderCensusBreakdowns();
-renderMarketingSpot();
-renderMarketingTrend();
-renderMarketingDetail();
-renderOpportunities();
-renderURSpot();
-renderURTrend();
-renderClinicalSpot();
-renderClinical();
-renderOpsHeatmap();
-renderOpsDetail();
-renderOpsMonthlyIns();
-renderFieldExplorer();
-// Show billing by default
-showPage('billing');
-
-}</script>
+function runDashboard(){
+  renderBillingSpot();
+  renderBillingBreakdowns();
+  renderBillingTrend();
+  renderBillingDetail();
+  renderCensusSpot();
+  renderCensusTrend();
+  renderCensusBreakdowns();
+  renderMarketingSpot();
+  renderMarketingTrend();
+  renderMarketingDetail();
+  renderOpportunities();
+  renderURSpot();
+  renderURTrend();
+  renderClinicalSpot();
+  renderClinical();
+  renderOpsHeatmap();
+  renderOpsDetail();
+  renderOpsMonthlyIns();
+  renderFieldExplorer();
+  showPage('billing');
+}
+// Static mode: auto-run. Live mode: build_live.py removes this line.
+</script>
 <script>
 (function(){
   const msalConfig = {
