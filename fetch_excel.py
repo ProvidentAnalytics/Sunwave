@@ -34,24 +34,53 @@ def get_token():
     r.raise_for_status()
     return r.json()['access_token']
 
+def find_file_in_folder(site_id, h, parent='root', depth=0, max_depth=4):
+    """Recursively walk folders to find FILE_NAME. App-only safe (no /search)."""
+    if depth > max_depth:
+        return None
+    url = f'https://graph.microsoft.com/v1.0/sites/{site_id}/drive/{parent}/children?$select=id,name,file,folder&$top=200'
+    while url:
+        r = requests.get(url, headers=h, timeout=30)
+        r.raise_for_status()
+        data = r.json()
+        for item in data.get('value', []):
+            if 'file' in item and item.get('name') == FILE_NAME:
+                return item
+        # Recurse into folders only after scanning current level
+        for item in data.get('value', []):
+            if 'folder' in item:
+                found = find_file_in_folder(site_id, h, parent=f"items/{item['id']}",
+                                            depth=depth+1, max_depth=max_depth)
+                if found:
+                    return found
+        url = data.get('@odata.nextLink')
+    return None
+
 def download_workbook(token):
     h = {'Authorization': f'Bearer {token}'}
     site = requests.get(f'https://graph.microsoft.com/v1.0/sites/{HOST}:/{SITE_PATH}',
                         headers=h, timeout=30)
     site.raise_for_status()
     site_id = site.json()['id']
+    print(f'Site id: {site_id}')
 
-    search = requests.get(
-        f"https://graph.microsoft.com/v1.0/sites/{site_id}/drive/root/search(q='{FILE_NAME}')",
+    # Try direct path lookup at root first (fast path).
+    f = None
+    direct = requests.get(
+        f'https://graph.microsoft.com/v1.0/sites/{site_id}/drive/root:/{FILE_NAME}',
         headers=h, timeout=30,
     )
-    search.raise_for_status()
-    files = search.json().get('value', [])
-    f = next((x for x in files if x['name'] == FILE_NAME), files[0] if files else None)
-    if not f:
-        sys.exit(f'File not found in SharePoint: {FILE_NAME}')
+    if direct.status_code == 200:
+        f = direct.json()
+        print(f'Found via direct path: {f["id"]}')
+    else:
+        print(f'Direct lookup returned {direct.status_code}; walking folders...')
+        f = find_file_in_folder(site_id, h)
+        if not f:
+            sys.exit(f'File not found anywhere in site drive: {FILE_NAME}')
+        print(f'Found via walk: {f["id"]}')
 
-    print(f"Downloading {FILE_NAME} (id={f['id']}, size={f.get('size','?')} bytes)...")
+    print(f"Downloading {FILE_NAME} (size={f.get('size','?')} bytes)...")
     dl = requests.get(
         f"https://graph.microsoft.com/v1.0/sites/{site_id}/drive/items/{f['id']}/content",
         headers=h, stream=True, timeout=300,
