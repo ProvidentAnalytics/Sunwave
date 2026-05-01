@@ -1,0 +1,55 @@
+name: Refresh Sunwave Dashboard
+
+on:
+  # Run hourly. Edit the cron to change cadence:
+  #   '*/15 * * * *'   = every 15 minutes
+  #   '0 * * * *'      = top of every hour  (current)
+  #   '0 */4 * * *'    = every 4 hours
+  #   '0 6 * * *'      = once daily at 06:00 UTC
+  schedule:
+    - cron: '0 * * * *'
+  # Allow manual trigger from the Actions tab
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-dashboard
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install pandas openpyxl requests
+
+      - name: Fetch workbook from SharePoint
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        run: python fetch_excel.py
+
+      - name: Build dashboard
+        run: python build_combined.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html Sunwave_Dashboard.html
+          if git diff --cached --quiet; then
+            echo "No changes to dashboard; skipping commit."
+          else
+            git commit -m "Auto-refresh dashboard data [skip ci]"
+            git push
+          fi
