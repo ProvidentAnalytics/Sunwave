@@ -32,7 +32,24 @@ def get_token():
         timeout=30,
     )
     r.raise_for_status()
-    return r.json()['access_token']
+    tok = r.json()['access_token']
+    # Decode JWT payload (no signature check, just for diagnostics)
+    import base64, json as _json
+    try:
+        payload_b64 = tok.split('.')[1]
+        payload_b64 += '=' * (-len(payload_b64) % 4)
+        payload = _json.loads(base64.urlsafe_b64decode(payload_b64))
+        roles = payload.get('roles', [])
+        print(f"Token app id (appid): {payload.get('appid','?')}")
+        print(f"Token tenant (tid):   {payload.get('tid','?')}")
+        print(f"Token APPLICATION permissions (roles): {roles or '(none — permissions not granted!)'}")
+        if not roles:
+            print("⚠️  No 'roles' claim in token. The Azure AD app has no admin-consented")
+            print("    Application permissions. Add Files.Read.All + Sites.Read.All under")
+            print("    'Application permissions' (not 'Delegated') and click 'Grant admin consent'.")
+    except Exception as e:
+        print(f"Could not decode token for diagnostics: {e}")
+    return tok
 
 def find_file_in_folder(site_id, h, parent='root', depth=0, max_depth=4):
     """Recursively walk folders to find FILE_NAME. App-only safe (no /search)."""
