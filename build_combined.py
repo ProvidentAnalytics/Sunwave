@@ -439,7 +439,7 @@ const PAGE_SIZE = 100;
 SHEETS.forEach(s=>{
   gView[s]='month'; gOffset[s]=0; gSearch[s]=''; gDate[s]=null; gSort[s]={col:-1,asc:true};
 });
-let bNavView='month', bNavDate=null, bNavSearch='', bSortCol='deposit_date', bSortAsc=false;
+let bNavView='all', bNavDate=null, bNavSearch='', bSortCol='deposit_date', bSortAsc=false;
 for(const r of BROWS){ const d=pd(r.deposit_date); if(d){bNavDate=d;break;} }
 if(!bNavDate) bNavDate=new Date();
 
@@ -1050,7 +1050,7 @@ function renderCensusTrend() {
 }
 
 // ── Period nav state for breakdowns ───────────────────────────────────────
-let cNavView='month', cNavDate=null;
+let cNavView='all', cNavDate=null;
 for(const r of CROWS){const d=pd(r.adm);if(d){cNavDate=d;break;}}
 if(!cNavDate)cNavDate=new Date();
 
@@ -1220,7 +1220,7 @@ function renderMarketingSpot(){
   document.getElementById('mktSpot').innerHTML=h;
 }
 
-let mktNavView='month',mktNavDate=null;
+let mktNavView='all',mktNavDate=null;
 for(const r of OROWS){const d=pd(r.co);if(d){mktNavDate=d;break;}}
 if(!mktNavDate)mktNavDate=new Date();
 
@@ -1358,7 +1358,7 @@ function renderTimelineEntries(oid){
   return h;
 }
 
-let oppNavView='month',oppNavDate=null,oppSearch='',oppSortCol='co',oppSortAsc=false;
+let oppNavView='all',oppNavDate=null,oppSearch='',oppSortCol='co',oppSortAsc=false;
 for(const r of OROWS){const d=pd(r.co);if(d){oppNavDate=d;break;}}
 if(!oppNavDate)oppNavDate=new Date();
 
@@ -1534,7 +1534,7 @@ const GNROWS = JSON.parse(document.getElementById('gnData').textContent);
 
 function gnFilter(rows,from,to){return rows.filter(r=>{const d=pd(r.date);return d&&d>=from&&d<=to;});}
 
-let clinNavView='month',clinNavDate=null;
+let clinNavView='all',clinNavDate=null;
 for(const r of GNROWS){const d=pd(r.date);if(d){clinNavDate=d;break;}}
 if(!clinNavDate)clinNavDate=new Date();
 
@@ -1647,7 +1647,7 @@ function renderOpsHeatmap(){
   document.getElementById('opsHeatmap').innerHTML=h;
 }
 
-let opsNavView='month',opsNavDate=null;
+let opsNavView='all',opsNavDate=null;
 for(const r of OPROWS2){const d=pd(r.date);if(d){opsNavDate=d;break;}}
 if(!opsNavDate)opsNavDate=new Date();
 
@@ -1816,11 +1816,11 @@ CENSUS_SECTION = """
     <h2 class="section-title">PERIOD DETAIL &mdash; Breakdowns by Selected Period</h2>
     <div class="controls">
       <div class="view-btns">
-        <button id="cViewMonth" class="view-btn active" onclick="cSetView('month')">Month</button>
+        <button id="cViewMonth" class="view-btn"        onclick="cSetView('month')">Month</button>
         <button id="cViewWeek"  class="view-btn"        onclick="cSetView('week')">Week</button>
         <button id="cViewDay"   class="view-btn"        onclick="cSetView('day')">Day</button>
         <button id="cViewYear"  class="view-btn"        onclick="cSetView('year')">Year</button>
-        <button id="cViewAll"   class="view-btn"        onclick="cSetView('all')">Show All</button>
+        <button id="cViewAll"   class="view-btn active" onclick="cSetView('all')">Show All</button>
       </div>
       <div class="nav-btns">
         <button class="period-nav-btn" onclick="cNavigate(-1)">&#8249;</button>
@@ -1868,11 +1868,11 @@ BILLING_SECTION = """
     <h2 class="section-title">DETAIL VIEW &mdash; Selected Period</h2>
     <div class="controls">
       <div class="view-btns">
-        <button id="bViewMonth" class="view-btn active" onclick="bSetView('month')">Month</button>
+        <button id="bViewMonth" class="view-btn"        onclick="bSetView('month')">Month</button>
         <button id="bViewWeek"  class="view-btn"        onclick="bSetView('week')">Week</button>
         <button id="bViewDay"   class="view-btn"        onclick="bSetView('day')">Day</button>
         <button id="bViewYear"  class="view-btn"        onclick="bSetView('year')">Year</button>
-        <button id="bViewAll"   class="view-btn"        onclick="bSetView('all')">Show All</button>
+        <button id="bViewAll"   class="view-btn active" onclick="bSetView('all')">Show All</button>
       </div>
       <div class="nav-btns">
         <button class="period-nav-btn" onclick="bNavigate(-1)">&#8249;</button>
@@ -1918,11 +1918,11 @@ MARKETING_SECTION = """
     <h2 class="section-title">PERIOD DETAIL &mdash; Funnel &amp; Breakdowns</h2>
     <div class="controls">
       <div class="view-btns">
-        <button id="mktViewMonth" class="view-btn active" onclick="mktSetView('month')">Month</button>
+        <button id="mktViewMonth" class="view-btn"        onclick="mktSetView('month')">Month</button>
         <button id="mktViewWeek"  class="view-btn"        onclick="mktSetView('week')">Week</button>
         <button id="mktViewDay"   class="view-btn"        onclick="mktSetView('day')">Day</button>
         <button id="mktViewYear"  class="view-btn"        onclick="mktSetView('year')">Year</button>
-        <button id="mktViewAll"   class="view-btn"        onclick="mktSetView('all')">Show All</button>
+        <button id="mktViewAll"   class="view-btn active" onclick="mktSetView('all')">Show All</button>
       </div>
       <div class="nav-btns">
         <button class="period-nav-btn" onclick="mktNavigate(-1)">&#8249;</button>
@@ -1957,11 +1957,11 @@ OPPORTUNITIES_SECTION = """
     <h2 class="section-title">OPPORTUNITIES DETAIL &mdash; Period View</h2>
     <div class="controls">
       <div class="view-btns">
-        <button id="oppViewMonth" class="view-btn active" onclick="oppSetView('month')">Month</button>
+        <button id="oppViewMonth" class="view-btn"        onclick="oppSetView('month')">Month</button>
         <button id="oppViewWeek"  class="view-btn"        onclick="oppSetView('week')">Week</button>
         <button id="oppViewDay"   class="view-btn"        onclick="oppSetView('day')">Day</button>
         <button id="oppViewYear"  class="view-btn"        onclick="oppSetView('year')">Year</button>
-        <button id="oppViewAll"   class="view-btn"        onclick="oppSetView('all')">Show All</button>
+        <button id="oppViewAll"   class="view-btn active" onclick="oppSetView('all')">Show All</button>
       </div>
       <div class="nav-btns">
         <button class="period-nav-btn" onclick="oppNavigate(-1)">&#8249;</button>
@@ -2013,11 +2013,11 @@ CLINICAL_SECTION = """
     <h2 class="section-title">PERIOD DETAIL</h2>
     <div class="controls">
       <div class="view-btns">
-        <button id="clinViewMonth" class="view-btn active" onclick="clinSetView('month')">Month</button>
+        <button id="clinViewMonth" class="view-btn"        onclick="clinSetView('month')">Month</button>
         <button id="clinViewWeek"  class="view-btn"        onclick="clinSetView('week')">Week</button>
         <button id="clinViewDay"   class="view-btn"        onclick="clinSetView('day')">Day</button>
         <button id="clinViewYear"  class="view-btn"        onclick="clinSetView('year')">Year</button>
-        <button id="clinViewAll"   class="view-btn"        onclick="clinSetView('all')">Show All</button>
+        <button id="clinViewAll"   class="view-btn active" onclick="clinSetView('all')">Show All</button>
       </div>
       <div class="nav-btns">
         <button class="period-nav-btn" onclick="clinNavigate(-1)">&#8249;</button>
@@ -2050,11 +2050,11 @@ OPERATIONS_SECTION = """
     <h2 class="section-title">PERIOD DETAIL</h2>
     <div class="controls">
       <div class="view-btns">
-        <button id="opsViewMonth" class="view-btn active" onclick="opsSetView('month')">Month</button>
+        <button id="opsViewMonth" class="view-btn"        onclick="opsSetView('month')">Month</button>
         <button id="opsViewWeek"  class="view-btn"        onclick="opsSetView('week')">Week</button>
         <button id="opsViewDay"   class="view-btn"        onclick="opsSetView('day')">Day</button>
         <button id="opsViewYear"  class="view-btn"        onclick="opsSetView('year')">Year</button>
-        <button id="opsViewAll"   class="view-btn"        onclick="opsSetView('all')">Show All</button>
+        <button id="opsViewAll"   class="view-btn active" onclick="opsSetView('all')">Show All</button>
       </div>
       <div class="nav-btns">
         <button class="period-nav-btn" onclick="opsNavigate(-1)">&#8249;</button>
@@ -2138,7 +2138,178 @@ html = (
     '</body>\n</html>'
 )
 
-out = 'Sunwave_Dashboard.html'
-with open(out, 'w', encoding='utf-8') as f:
-    f.write(html)
-print(f"Done: {os.path.getsize(out)/1024/1024:.1f} MB")
+# ── Inject silent background-refresh script + cache-override pre-processor ──
+# Goal: page loads instantly with embedded data (no loader). On every load,
+# in the background, try a silent SSO via MSAL — if user is already signed in
+# to M365 in this browser, fetch fresh data from Graph API and store it in
+# localStorage. Subsequent loads use the cached newer data automatically.
+CLIENT_ID       = 'debd63be-2397-4d6e-adb1-381574e7352b'
+TENANT_ID       = '063ab74f-56d1-429a-b96d-a24a572025de'
+SHAREPOINT_HOST = 'gshealthcarellc.sharepoint.com'
+SITE_PATH       = 'sites/Provident'
+FILE_NAME       = 'MASTER_Sunwave_New_PowerQuerry.xlsx'
+
+PRE_PROCESSOR = """
+(function(){
+  // If localStorage holds newer/cached data from a prior background refresh,
+  // overwrite the embedded placeholders BEFORE the dashboard JS parses them.
+  try {
+    const c = JSON.parse(localStorage.getItem('sunwave_data_v3') || 'null');
+    if (!c || !c.data) return;
+    const map = {
+      generalData: 'raw_data', dateIdx: 'tab_config', billingData: 'billing_rows',
+      censusData:  'census_rows', oppData: 'opp_rows', authData: 'auth_rows',
+      opsData:     'ops_rows', gnData: 'gn_rows', tlData: 'timeline_rows',
+    };
+    Object.entries(map).forEach(([id, key]) => {
+      if (c.data[key] !== undefined) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = JSON.stringify(c.data[key]);
+      }
+    });
+  } catch(e) { console.warn('Cache pre-load skipped:', e); }
+})();
+"""
+
+BG_REFRESH = ("""
+(function(){
+  const SCOPES = ['Files.Read', 'Sites.Read.All'];
+  const HOST = '__HOST__', SITE = '__SITE__', FILE = '__FILE__';
+  const cfg = { auth: {
+    clientId: '__CID__',
+    authority: 'https://login.microsoftonline.com/__TID__',
+    redirectUri: window.location.origin + window.location.pathname,
+  }, cache: { cacheLocation: 'localStorage' } };
+
+  function xDate(v){
+    if (v===null||v===undefined||v==='') return '';
+    if (typeof v==='number'){ const d=new Date(Math.round((v-25569)*86400000));
+      return String(d.getUTCMonth()+1).padStart(2,'0')+'/'+String(d.getUTCDate()).padStart(2,'0')+'/'+d.getUTCFullYear(); }
+    return String(v).trim();
+  }
+  function xDT(v){
+    if (typeof v==='number'){ const d=new Date(Math.round((v-25569)*86400000));
+      const hr=d.getUTCHours(),mn=d.getUTCMinutes(),ap=hr>=12?'PM':'AM',h12=hr%12===0?12:hr%12;
+      return String(d.getUTCMonth()+1).padStart(2,'0')+'/'+String(d.getUTCDate()).padStart(2,'0')+'/'+d.getUTCFullYear()
+        +' '+String(h12).padStart(2,'0')+':'+String(mn).padStart(2,'0')+' '+ap; }
+    return v?String(v).trim():'';
+  }
+  const xN=v=>{if(v===null||v===undefined||v==='')return 0;const n=parseFloat(v);return isNaN(n)?0:Math.round(n*100)/100;};
+  const xI=v=>{if(v===null||v===undefined||v==='')return null;const n=parseFloat(v);return isNaN(n)?null:Math.round(n);};
+  const xS=v=>v==null?'':String(v).trim();
+  function dow(v){if(typeof v!=='number')return -1;const d=new Date(Math.round((v-25569)*86400000));return d.getUTCDay();}
+  function hr(v){if(typeof v==='number')return Math.floor(v*24)%24;const m=String(v||'').match(/(\\d{1,2}):/);return m?+m[1]:-1;}
+
+  async function gget(p,t){
+    const r=await fetch('https://graph.microsoft.com/v1.0'+p,{headers:{Authorization:'Bearer '+t}});
+    if(!r.ok) throw new Error('Graph '+r.status);
+    return r.json();
+  }
+
+  function map(sheets, name, fn){
+    const v=sheets[name]; if(!v||v.length<2) return [];
+    const cols=v[0].map(c=>xS(c));
+    const i=c=>cols.indexOf(c);
+    const out=[]; for(let k=1;k<v.length;k++) out.push(fn(v[k], i));
+    return out;
+  }
+  function transform(sheets){
+    const DF={'Census':'Admission Date','Census Active':'Admission Date','Census_Admitted':'Admission Date','Census_Discharge':'Discharge Date','GroupNotes':'session_date','Incident Report':'incident_reports.date_of_incident','Opportunities Active':'created_on','Opportunities by Created Date':'created_on','Opportunities':'created_on','Patients':'created_on','Payment Report Payment Date':'payment_date','Payment Report Deposit Date':'deposit_date','Referral Active':'created_on','Report Auth':'admission_date','Report Deleted Form':'deleted_on','Report Diagnois Changes':'date_from','Report Form Modified':'modified_on','Report Program Change':'start_on','Report UR Changes':'admission_date','Users':'created_on'};
+    const SK=['Table of Contents','Realms','Bedboard','Payment Summary'];
+    const HINT=['date','_on','admission','discharge','deposit','review','modified','deleted'];
+    const raw_data={}, tab_config={};
+    for(const [n,v] of Object.entries(sheets)){
+      if(SK.includes(n)||!v||!v.length) continue;
+      const cols=v[0].map(c=>xS(c));
+      const dIdxs=cols.map((c,i)=>HINT.some(h=>c.toLowerCase().includes(h))?i:-1).filter(i=>i>=0);
+      const rows=v.slice(1).map(r=>r.map((c,i)=>{
+        if(c==null) return '';
+        if(typeof c==='number'&&dIdxs.includes(i)&&c>25000&&c<80000) return xDate(c);
+        return String(c);
+      }));
+      raw_data[n]={columns:cols,rows};
+      const dc=DF[n];
+      tab_config[n]=(dc&&cols.indexOf(dc)>=0)?cols.indexOf(dc):-1;
+    }
+    return {
+      raw_data, tab_config,
+      billing_rows: map(sheets,'Payment Report Deposit Date',(r,i)=>({deposit_date:xDate(r[i('deposit_date')]),payer_name:xS(r[i('payer_name')]),level_of_care:xS(r[i('level_of_care')]),adjustment_type:xS(r[i('adjustment_type')]),service_facility:xS(r[i('service_facility')]),service_name:xS(r[i('service_name')]),payment_type:xS(r[i('payment_type')]),line_charge_amount:xN(r[i('line_charge_amount')]),line_paid_amount:xN(r[i('line_paid_amount')]),line_adjusted:xN(r[i('line_adjusted')]),line_allocated_amount:xN(r[i('line_allocated_amount')]),line_patient_name:xS(r[i('line_patient_name')]),procedure_code:xS(r[i('procedure_code')])})),
+      census_rows: map(sheets,'Census',(r,i)=>({adm:xDate(r[i('Admission Date')]),dis:xDate(r[i('Discharge Date')]),loc:xS(r[i('Admission Level Of Care')]),cloc:xS(r[i('Current Level Of Care')]),gen:xS(r[i('Patient Gender Code')]),age:xI(r[i('Age')]),drug:xS(r[i('Primary Drug Of Choice ')]),ref:xS(r[i('Referral Source')]),dtype:xS(r[i('Discharge Type')]),los:xI(r[i('Length Of Stay')]),name:xS(r[i('Patient Name')])})),
+      opp_rows: map(sheets,'Opportunities by Created Date',(r,i)=>{const a=r[i('admission_date')];const ok=typeof a==='number'?a>36500:true;return {id:xS(r[i('opportunity_id')]),co:xDate(r[i('created_on')]),adm:ok?xDate(a):'',outcome:xS(r[i('outcome')]),stage:xS(r[i('stage')]),loc:xS(r[i('level_of_care')]),ins:xS(r[i('insurance provider')]),ref:xS(r[i('referral name')]),lost_r:xS(r[i('lost reason')]),aband_r:xS(r[i('abandoned reason')]),name:xS(r[i('patient name')])};}),
+      auth_rows: map(sheets,'Report Auth',(r,i)=>({adm:xDate(r[i('admission_date')]),nrd:xDate(r[i('next_review_date')]),code:xS(r[i('authorization_code')]),au:xN(r[i('authorized_units')]),bu:xN(r[i('billed_units_total')]),ins:xS(r[i('insurance_provider')]),reviewer:xS(r[i('ur_reviewer')]),patient:xS(r[i('patient_name')]),facility:xS(r[i('service_facility')])})),
+      ops_rows: map(sheets,'Census_Admitted',(r,i)=>({date:xDate(r[i('Admission Date')]),hour:hr(r[i('Admission Time')]),dow:dow(r[i('Admission Date')]),rep:xS(r[i('Admissions Rep')]),therapist:xS(r[i('Assigned Therapist')]),ins:xS(r[i('Insurance Name')]),loc:xS(r[i('Admission Level Of Care')]),name:xS(r[i('Patient Name')])})),
+      gn_rows: map(sheets,'GroupNotes',(r,i)=>({date:xDate(r[i('session_date')]),title:xS(r[i('group_title')]),status:xS(r[i('status')]),mins:Math.round(parseFloat(r[i('length_time')])||0)})),
+      timeline_rows: map(sheets,'Timeline',(r,i)=>({oid:xS(r[i('opportunity_id')]),date:xDT(r[i('activity_date')]),subject:xS(r[i('task_subject')]),type:xS(r[i('type')]),by:xS(r[i('created_by_name')]),wf:xS(r[i('workflow_status')]),text:xS(r[i('text')]),sortKey:typeof r[i('activity_date')]==='number'?r[i('activity_date')]:0})),
+    };
+  }
+
+  async function bgRefresh(){
+    if(!window.msal){ setTimeout(bgRefresh, 300); return; }
+    try{
+      const inst = new msal.PublicClientApplication(cfg);
+      if(typeof inst.initialize==='function') await inst.initialize();
+      let account = inst.getAllAccounts()[0];
+      let token;
+      if(account){
+        const r = await inst.acquireTokenSilent({scopes:SCOPES, account});
+        token = r.accessToken;
+      } else {
+        try {
+          const r = await inst.ssoSilent({scopes:SCOPES});
+          token = r.accessToken;
+        } catch(e){
+          // No silent SSO available — user not signed in. Skip refresh.
+          console.log('[bg refresh] silent SSO unavailable, skipping');
+          return;
+        }
+      }
+      // Fetch and transform
+      const site = await gget('/sites/'+HOST+':/'+SITE, token);
+      const search = await gget('/sites/'+site.id+"/drive/root/search(q='"+encodeURIComponent(FILE)+"')", token);
+      const file = (search.value||[]).find(f=>f.name===FILE) || (search.value||[])[0];
+      if(!file) return;
+      const ws = await gget('/sites/'+site.id+'/drive/items/'+file.id+'/workbook/worksheets', token);
+      const names = ws.value.map(w=>w.name);
+      const sheets = {};
+      await Promise.all(names.map(async n => {
+        try { const r = await gget('/sites/'+site.id+'/drive/items/'+file.id+'/workbook/worksheets/'+encodeURIComponent(n)+'/usedRange?$select=values', token);
+          sheets[n] = r.values || []; } catch(e){ sheets[n] = []; }
+      }));
+      const data = transform(sheets);
+      localStorage.setItem('sunwave_data_v3', JSON.stringify({v:3, ts: Date.now(), data}));
+      console.log('[bg refresh] cache updated');
+    } catch(e){
+      console.warn('[bg refresh] failed silently:', e);
+    }
+  }
+
+  // Kick off after page paints, never blocking UI
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', ()=>setTimeout(bgRefresh,500));
+  else setTimeout(bgRefresh,500);
+})();
+"""
+.replace('__CID__',  CLIENT_ID)
+.replace('__TID__',  TENANT_ID)
+.replace('__HOST__', SHAREPOINT_HOST)
+.replace('__SITE__', SITE_PATH)
+.replace('__FILE__', FILE_NAME))
+
+# Insert pre-processor BEFORE the dashboard JS so cached data overrides
+# placeholders before parsing. Insert bg refresh AFTER dashboard JS + MSAL CDN.
+INJECT = (
+    '<script>' + PRE_PROCESSOR + '</script>\n'
+    '<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"></script>\n'
+    '<script>if(!window.msal){document.write(\'<script src="https://unpkg.com/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"><\\/script>\');}</script>\n'
+    '<script>' + BG_REFRESH + '</script>\n'
+)
+html = html.replace('<script>' + JS + '</script>\n',
+                    '<script>' + PRE_PROCESSOR + '</script>\n<script>' + JS + '</script>\n'
+                    '<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"></script>\n'
+                    '<script>if(!window.msal){document.write(\'<script src="https://unpkg.com/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"><\\/script>\');}</script>\n'
+                    '<script>' + BG_REFRESH + '</script>\n')
+
+# Write both the labelled file and index.html for GitHub Pages
+for out in ('Sunwave_Dashboard.html', 'index.html'):
+    with open(out, 'w', encoding='utf-8') as f:
+        f.write(html)
+print(f"Done: {os.path.getsize('index.html')/1024/1024:.1f} MB (also wrote Sunwave_Dashboard.html)")
