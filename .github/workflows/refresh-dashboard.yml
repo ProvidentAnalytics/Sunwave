@@ -1,14 +1,15 @@
 name: Refresh Sunwave Dashboard
 
 on:
-  # Run hourly. Edit the cron to change cadence:
-  #   '*/15 * * * *'   = every 15 minutes
-  #   '0 * * * *'      = top of every hour  (current)
-  #   '0 */4 * * *'    = every 4 hours
-  #   '0 6 * * *'      = once daily at 06:00 UTC
-  schedule:
-    - cron: '0 * * * *'
-  # Allow manual trigger from the Actions tab
+  # Schedule disabled to conserve Actions minutes. Re-enable by uncommenting
+  # one of the cron lines below. Manual trigger always available via the
+  # Actions tab → "Run workflow".
+  #   '*/15 * * * *'  = every 15 minutes
+  #   '0 * * * *'     = top of every hour
+  #   '0 */4 * * *'   = every 4 hours
+  #   '0 6 * * *'     = once daily at 06:00 UTC
+  # schedule:
+  #   - cron: '0 6 * * *'
   workflow_dispatch:
 
 permissions:
