@@ -97,15 +97,26 @@ def safe_str(v):
 
 
 # ── Process Opportunities ───────────────────────────────────────────────────
-opps_src = sheet_to_dicts('Opportunities by Created Date')
+# Primary source: "Opportunity" sheet. Fall back to other names if SharePoint
+# sheet hasn't been renamed yet.
+def pick_sheet(*names):
+    for n in names:
+        if n in raw and raw[n].get('rows'):
+            print(f'  Using sheet: {n!r}')
+            return sheet_to_dicts(n)
+    print(f'  Warning: none of {names} found in report_data.json')
+    return []
+
+print('[CRM] Loading Opportunity sheet...')
+opps_src = pick_sheet('Opportunity', 'Opportunities', 'Opportunities by Created Date', 'Opportunities Active')
 opps = []
 for r in opps_src:
-    oid = safe_str(r.get('opportunity_id') or r.get('opportunity_legacy_id'))
+    oid = safe_str(r.get('opportunity_id') or r.get('opportunity_legacy_id') or r.get('id'))
     if not oid:
         continue
     opps.append({
         'id':      oid,
-        'name':    safe_str(r.get('patient name') or ''),
+        'name':    safe_str(r.get('patient name') or r.get('Patient Name') or ''),
         'co':      parse_date(r.get('created_on')),
         'admit':   parse_date(r.get('admission_date')),
         'outcome': safe_str(r.get('outcome')),
@@ -120,7 +131,8 @@ for r in opps_src:
     })
 
 # ── Process Timeline (activities) ──────────────────────────────────────────
-acts_src = sheet_to_dicts('Timeline')
+print('[CRM] Loading Timeline sheet...')
+acts_src = pick_sheet('Timeline')
 acts = []
 for r in acts_src:
     oid = safe_str(r.get('opportunity_id') or r.get('associated_with_id'))
@@ -140,39 +152,37 @@ for r in acts_src:
         'date':  dt,
         'assoc': safe_str(r.get('associated_with')),
         'task_type': safe_str(r.get('task_type')),
+        'task_status': safe_str(r.get('task_status')),
+        'task_due_date': parse_date(r.get('task_due_date')),
+        'reminder_date_time': parse_date(r.get('reminder_date_time')),
+        'assigned_to_name': safe_str(r.get('assigned_to_name')),
     })
 
-# ── Process Users ───────────────────────────────────────────────────────────
-users_src = sheet_to_dicts('Users')
-users = []
-for r in users_src:
-    name = safe_str(r.get('display_name') or r.get('name') or r.get('user_name')
-                    or r.get('first_name', '') + ' ' + r.get('last_name', ''))
-    if not name:
-        continue
-    users.append({
-        'id':    safe_str(r.get('id')),
-        'name':  name,
-        'email': safe_str(r.get('email')),
-        'role':  safe_str(r.get('role') or r.get('roles')),
-    })
-# De-dupe by name
-seen = set()
-users_unique = []
-for u in users:
-    key = u['name'].lower()
-    if key in seen: continue
-    seen.add(key); users_unique.append(u)
-users = users_unique
+# ── Derive Users from Timeline (created_by_name + assigned_to_name) ────────
+print('[CRM] Deriving Users from Timeline...')
+user_set = {}  # lowercase_name -> {name, count}
+for a in acts:
+    for nm in (a.get('by'), a.get('assigned_to_name')):
+        nm = safe_str(nm)
+        if not nm: continue
+        key = nm.lower()
+        if key not in user_set:
+            user_set[key] = {'id': '', 'name': nm, 'email': '', 'role': '', 'count': 0}
+        user_set[key]['count'] += 1
+users = sorted(user_set.values(), key=lambda u: -u['count'])
 
-# ── Process CRM Tasks (open only) ──────────────────────────────────────────
-tasks_src = sheet_to_dicts('CRM Task')
+# ── Derive open CRM Tasks from Timeline rows where type='Task' ─────────────
+print('[CRM] Deriving Tasks from Timeline rows where type=Task...')
 tasks = []
-for r in tasks_src:
+for r in acts_src:
+    typ = safe_str(r.get('type'))
+    if typ != 'Task':
+        continue
     status = safe_str(r.get('task_status')).lower()
+    is_open = status in ('open', 'pending', '') and status not in ('completed', 'closed', 'cancelled')
     tasks.append({
         'id':         safe_str(r.get('id')),
-        'aid':        safe_str(r.get('Associated_id') or r.get('associated_with_id')),
+        'aid':        safe_str(r.get('associated_with_id') or r.get('opportunity_id')),
         'assoc':      safe_str(r.get('associated_with')),
         'subject':    safe_str(r.get('task_subject')),
         'task_type':  safe_str(r.get('task_type')),
@@ -183,7 +193,7 @@ for r in tasks_src:
         'due':        parse_date(r.get('task_due_date')),
         'created':    parse_date(r.get('created_on')),
         'reminder':   parse_date(r.get('reminder_date_time')),
-        'is_open':    status in ('open', 'pending', '') and status != 'completed' and status != 'closed',
+        'is_open':    is_open,
     })
 
 # ── Meta ────────────────────────────────────────────────────────────────────

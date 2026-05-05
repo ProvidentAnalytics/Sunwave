@@ -29,6 +29,18 @@ SharePoint xlsx → fetch_excel.py → report_data.json
                                   GitHub Pages serves it
 ```
 
+## Data Source
+
+- **File**: `MASTER_Sunwave_New_PowerQuerry.xlsx`
+- **Location**: `https://gshealthcarellc.sharepoint.com/sites/Provident/.../MASTER_Sunwave_New_PowerQuerry.xlsx` (sourcedoc `BEB25215-5C02-4624-B26C-3F4AD5490DEC`)
+- **Sheets used by build_crm.py**:
+  - `Opportunity` (or fallback: `Opportunities`, `Opportunities by Created Date`, `Opportunities Active`)
+  - `Timeline` (used for activities, derived users, and derived open tasks)
+
+Users and open CRM tasks are **derived from the Timeline sheet** — no separate "Users" or "CRM Task" sheet is required.
+- Users come from `created_by_name` and `assigned_to_name` columns on Timeline.
+- Open tasks come from Timeline rows where `type = 'Task'` and `task_status` is open/pending/blank.
+
 ---
 
 ## Required GitHub Secrets
