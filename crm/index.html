@@ -188,7 +188,7 @@ var OPPS  = [{"id":"1143177","name":"Stephan Buchan","co":"2026-04-23T00:00:00",
 var ACTS  = [];
 var USERS = [];
 var TASKS = [];
-var META  = {"refreshed_at":"2026-05-05T18:42:49.468303+00:00","opps_count":438,"acts_count":0,"users_count":0,"tasks_count":0,"open_tasks":0};
+var META  = {"refreshed_at":"2026-05-05T18:51:47.076101+00:00","opps_count":438,"acts_count":0,"users_count":0,"tasks_count":0,"open_tasks":0};
 
 // ── Filter state ──────────────────────────────────────────────────────────
 var FILTERS = { period: '30D', outcome: '', users: [], humanOnly: true };
@@ -752,61 +752,105 @@ function buildEffectiveness() {
 }
 
 // ──────────────────────────────────────────────────────────────────
-// OPPORTUNITY FLOW
+// OPPORTUNITY FLOW — searchable list, click to expand timeline
 // ──────────────────────────────────────────────────────────────────
+var FLOW_EXPANDED = {};   // oid → true if expanded
+// Pre-index timeline by opportunity_id for O(1) lookup
+var ACTS_BY_OID = (function(){
+  var m = {};
+  for (var i = 0; i < ACTS.length; i++) {
+    var oid = ACTS[i].oid;
+    if (!oid) continue;
+    if (!m[oid]) m[oid] = [];
+    m[oid].push(ACTS[i]);
+  }
+  // Sort each opp's events oldest→newest (chronological)
+  Object.keys(m).forEach(function(k){
+    m[k].sort(function(a,b){ return (pd(a.date)||new Date(0)) - (pd(b.date)||new Date(0)); });
+  });
+  return m;
+})();
+
 function buildFlow() {
   var oppsAll = filteredOpps();
   var p = FILTERS.period;
 
-  var html = '<div class="card"><div class="card-h"><div><div class="card-title">Opportunity Flow</div><div class="card-sub">Click any row to expand the full timeline · ' + oppsAll.length + ' opportunities</div></div></div>';
-  html += '<div class="tbl-filters"><input type="text" class="tbl-search" id="flow-search" placeholder="Search by patient name, ID, stage..." oninput="renderFlowList()"></div>';
+  var html = '<div class="card"><div class="card-h"><div><div class="card-title">Opportunity Flow</div><div class="card-sub">Click any row to expand the full timeline · ' + oppsAll.length + ' opportunities · ' + ACTS.length + ' total timeline events</div></div></div>';
+  html += '<div class="tbl-filters"><input type="text" class="tbl-search" id="flow-search" placeholder="Search by patient name, ID, stage, outcome..." oninput="renderFlowList()"></div>';
   html += '<div id="flow-list-wrap"></div></div>';
   document.getElementById('tab-flow').innerHTML = html;
   renderFlowList();
 }
 
 function renderFlowList() {
-  var q = (document.getElementById('flow-search') || {}).value || '';
-  q = q.toLowerCase();
+  var q = ((document.getElementById('flow-search') || {}).value || '').toLowerCase();
   var list = filteredOpps().filter(function(o){
     if (!q) return true;
-    return ((o.name||'') + ' ' + (o.id||'') + ' ' + (o.stage||'') + ' ' + (o.outcome||'')).toLowerCase().indexOf(q) >= 0;
+    return ((o.name||'') + ' ' + (o.id||'') + ' ' + (o.stage||'') + ' ' + (o.outcome||'') + ' ' + (o.ins||'')).toLowerCase().indexOf(q) >= 0;
   });
   // Sort by created desc
   list.sort(function(a,b){ return (pd(b.co)||new Date(0)) - (pd(a.co)||new Date(0)); });
 
-  var html = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th></th><th>Patient</th><th>ID</th><th>Created</th><th>Outcome</th><th>Stage</th><th>LOC</th><th>Insurance</th></tr></thead><tbody>';
-  if (!list.length) html += '<tr><td colspan="8" class="empty">No opportunities match.</td></tr>';
-  list.slice(0, 200).forEach(function(o){
+  var html = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th style="width:36px"></th><th>Patient</th><th>ID</th><th>Created</th><th>Outcome</th><th>Stage</th><th>LOC</th><th>Insurance</th><th class="num">Events</th></tr></thead><tbody>';
+  if (!list.length) html += '<tr><td colspan="9" class="empty">No opportunities match.</td></tr>';
+  list.slice(0, 200).forEach(function(o, i){
     var oc = o.outcome || '';
     var ocCls = isAdmitted(o) ? 'b-green' : (isLost(o) ? 'b-red' : 'b-blue');
-    html += '<tr style="cursor:pointer" onclick="toggleFlow(\''+esc(o.id).replace(/[&"]/g,'')+'\')"><td>&#9658;</td><td>'+esc(o.name)+'</td><td><code>'+esc(o.id)+'</code></td><td>'+(o.co?fmt(pd(o.co)):'—')+'</td><td><span class="badge '+ocCls+'">'+esc(oc)+'</span></td><td>'+esc(o.stage)+'</td><td>'+esc(o.loc)+'</td><td>'+esc(o.ins)+'</td></tr>';
-    html += '<tr id="fl-'+esc(o.id).replace(/[&"]/g,'')+'" style="display:none"><td colspan="8" style="padding:0">'+renderFlowTimeline(o.id)+'</td></tr>';
+    var events = ACTS_BY_OID[o.id] || [];
+    var open = !!FLOW_EXPANDED[o.id];
+    var arrow = open ? '&#9660;' : '&#9658;';   // ▼ when open, ▶ when closed
+    var rowOnClick = 'toggleFlow(' + i + ',' + JSON.stringify(o.id) + ')';
+    html += '<tr style="cursor:pointer" onclick=\'' + rowOnClick + '\'>'
+         +    '<td style="text-align:center;color:var(--navy);font-weight:700">' + arrow + '</td>'
+         +    '<td>' + esc(o.name) + '</td>'
+         +    '<td><code>' + esc(o.id) + '</code></td>'
+         +    '<td>' + (o.co ? fmt(pd(o.co)) : '—') + '</td>'
+         +    '<td><span class="badge ' + ocCls + '">' + esc(oc) + '</span></td>'
+         +    '<td>' + esc(o.stage) + '</td>'
+         +    '<td>' + esc(o.loc) + '</td>'
+         +    '<td>' + esc(o.ins) + '</td>'
+         +    '<td class="num">' + (events.length ? '<span class="badge b-teal">' + events.length + '</span>' : '<span style="color:var(--muted)">0</span>') + '</td>'
+         + '</tr>';
+    if (open) {
+      html += '<tr class="tl-row"><td colspan="9" style="padding:0;background:#f8fafc">' + renderFlowTimeline(o.id) + '</td></tr>';
+    }
   });
   html += '</tbody></table></div>';
   if (list.length > 200) html += '<div style="padding:10px;color:var(--muted);font-size:11px">Showing 200 of ' + list.length + ' · use search to narrow</div>';
   document.getElementById('flow-list-wrap').innerHTML = html;
 }
 
-function toggleFlow(id) {
-  var safeId = id.replace(/[&"]/g, '');
-  var el = document.getElementById('fl-' + safeId);
-  if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
+function toggleFlow(idx, oid) {
+  if (FLOW_EXPANDED[oid]) delete FLOW_EXPANDED[oid];
+  else FLOW_EXPANDED[oid] = true;
+  renderFlowList();
 }
 
 function renderFlowTimeline(oid) {
-  var events = ACTS.filter(function(a){ return a.oid === oid; }).slice();
-  events.sort(function(a,b){ return (pd(a.date)||new Date(0)) - (pd(b.date)||new Date(0)); });
-  if (!events.length) return '<div class="tl-detail"><div class="empty">No timeline events for this opportunity.</div></div>';
-  var h = '<div class="tl-detail">';
+  var events = (ACTS_BY_OID[oid] || []).slice();
+  if (!events.length) {
+    return '<div class="tl-detail"><div class="empty" style="padding:18px">No timeline events for this opportunity.</div></div>';
+  }
+  var h = '<div class="tl-detail"><div style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:8px">Timeline · ' + events.length + ' events · oldest first</div>';
   events.forEach(function(e){
     var d = pd(e.date);
-    h += '<div class="tl-event"><span class="tl-date">' + (d ? fmtDT(d) : '—') + '</span>';
-    h += '<span class="tl-type">' + esc(e.type) + '</span>';
-    if (e.wf) h += '<span class="tl-type" style="background:rgba(245,158,11,.15);color:#f59e0b">' + esc(e.wf) + '</span>';
-    h += '<span class="tl-by">' + esc(e.by || '—') + '</span>';
-    if (e.subj) h += ' <strong>' + esc(e.subj) + '</strong>';
-    if (e.text) h += '<div style="margin-top:4px;color:#374151;white-space:pre-wrap">' + esc(e.text) + '</div>';
+    var typeColor = {
+      'Note':'rgba(10,61,92,.12)',
+      'Workflow':'rgba(148,163,184,.18)',
+      'Task':'rgba(61,255,192,.2)',
+      'Call':'rgba(59,130,246,.15)',
+      'Meeting':'rgba(245,158,11,.15)',
+      'Email':'rgba(139,92,246,.15)',
+      'Sms':'rgba(236,72,153,.15)',
+      'Wave':'rgba(203,213,225,.4)'
+    }[e.type] || 'rgba(107,126,150,.12)';
+    h += '<div class="tl-event">';
+    h +=   '<span class="tl-date">' + (d ? fmtDT(d) : '—') + '</span>';
+    h +=   '<span class="tl-type" style="background:' + typeColor + ';color:var(--navy)">' + esc(e.type || '—') + '</span>';
+    if (e.wf) h += '<span class="tl-type" style="background:rgba(245,158,11,.18);color:#92400e">' + esc(e.wf) + '</span>';
+    if (e.by) h += '<span class="tl-by">' + esc(e.by) + '</span>';
+    if (e.subj) h += ' <strong style="color:var(--navy)">' + esc(e.subj) + '</strong>';
+    if (e.text) h += '<div style="margin-top:5px;color:#374151;white-space:pre-wrap;line-height:1.5">' + esc(e.text) + '</div>';
     h += '</div>';
   });
   h += '</div>';
