@@ -165,6 +165,28 @@ for _, r in gndf.iterrows():
         'mins':   int(r['length_time']),
     })
 
+# ── Referral Active data ─────────────────────────────────────────────────────
+try:
+    rdf = pd.read_excel('MASTER_Sunwave_New_PowerQuerry.xlsx', sheet_name='Referral Active')
+    rdf['created_on'] = pd.to_datetime(rdf['created_on'], errors='coerce')
+    referral_rows = []
+    for _, r in rdf.iterrows():
+        co = r['created_on']
+        rid = r.get('referral_id', r.get('id', ''))
+        referral_rows.append({
+            'id':       '' if pd.isna(rid) else str(int(rid)) if isinstance(rid,(int,float)) else str(rid).strip(),
+            'co':       co.strftime('%m/%d/%Y') if pd.notna(co) else '',
+            'name':     str(r.get('referral name','') or r.get('name','')).strip(),
+            'type':     str(r.get('referral type','')).strip() if pd.notna(r.get('referral type','')) else '',
+            'stage':    str(r.get('referral source stage','')).strip() if pd.notna(r.get('referral source stage','')) else '',
+            'owner':    str(r.get('referral_source_owner','')).strip() if pd.notna(r.get('referral_source_owner','')) else '',
+            'city':     str(r.get('referral source city','')).strip() if pd.notna(r.get('referral source city','')) else '',
+            'state':    str(r.get('referral source state','')).strip() if pd.notna(r.get('referral source state','')) else '',
+        })
+except Exception as _e:
+    print(f"Warning: could not load Referral Active sheet: {_e}")
+    referral_rows = []
+
 # ── Serialize ─────────────────────────────────────────────────────────────────
 general_js  = json.dumps(raw_data,     separators=(',',':'), ensure_ascii=True).replace('</', '<\\/')
 config_js   = json.dumps(tab_config,   separators=(',',':'))
@@ -175,6 +197,7 @@ auth_js     = json.dumps(auth_rows,    separators=(',',':'), ensure_ascii=True).
 ops_js      = json.dumps(ops_rows,     separators=(',',':'), ensure_ascii=True).replace('</', '<\\/')
 gnotes_js   = json.dumps(gnotes_rows,  separators=(',',':'), ensure_ascii=True).replace('</', '<\\/')
 timeline_js = json.dumps(timeline_rows,separators=(',',':'), ensure_ascii=True).replace('</', '<\\/')
+referral_js = json.dumps(referral_rows,separators=(',',':'), ensure_ascii=True).replace('</', '<\\/')
 
 # ── CSS ───────────────────────────────────────────────────────────────────────
 CSS = """
@@ -422,6 +445,124 @@ h2.section-title {
 .funnel-fill { height:100%; border-radius:4px; background:linear-gradient(to right,#1a6ec0,#3694e0); transition:width .4s; }
 .funnel-val { position:absolute; right:8px; top:3px; font-size:11px; font-weight:700; color:#fff; }
 .funnel-val.dark { color:#1a3a5c; }
+
+/* ════════════════════════════════════════════════════════════════
+   NEW LAYOUT — top tabs + left filter rail (overrides legacy sidebar)
+═══════════════════════════════════════════════════════════════ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+body { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif !important; background: #f3f5f9 !important; color: #1f2937 !important; font-size: 13px !important; }
+#app { display: flex !important; flex-direction: column !important; flex: 1; overflow: hidden; }
+
+#topbar {
+  background: linear-gradient(to bottom, #1e2a3d, #0f1825);
+  color: #fff; height: 56px; flex-shrink: 0; z-index: 20;
+  display: flex; align-items: center; gap: 14px; padding: 0 18px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.35);
+  border-bottom: 1px solid #0a1220;
+}
+.brand { display: flex; flex-direction: column; line-height: 1.15; padding-right: 16px; border-right: 1px solid rgba(255,255,255,.12); }
+.brand .name { font-size: 14.5px; font-weight: 700; letter-spacing: .25px; }
+.brand .sub  { font-size: 10px; opacity: .55; font-weight: 400; }
+#tabBar { flex: 1; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: thin; }
+#tabBar::-webkit-scrollbar { height: 4px; }
+#tabBar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.18); border-radius: 2px; }
+.tab-btn {
+  padding: 7px 13px; background: transparent; color: #b5cce0;
+  border: none; border-radius: 5px; font: inherit; font-size: 12.5px; font-weight: 500;
+  cursor: pointer; white-space: nowrap; transition: all .12s; height: 34px;
+  display: inline-flex; align-items: center;
+}
+.tab-btn:hover { background: rgba(255,255,255,.08); color: #fff; }
+.tab-btn.active {
+  background: linear-gradient(to bottom, #2a86d8, #1a6ec0);
+  color: #fff; font-weight: 600;
+  box-shadow: 0 2px 8px rgba(26,110,192,.5), inset 0 -2px 0 rgba(0,0,0,.15);
+}
+.tab-btn.tab-hidden { display: none; }
+.topbar-action {
+  padding: 7px 11px; background: rgba(255,255,255,.06); color: #cfe1f0;
+  border: 1px solid rgba(255,255,255,.12); border-radius: 5px;
+  font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; transition: all .12s;
+  height: 34px;
+}
+.topbar-action:hover { background: rgba(255,255,255,.14); color: #fff; border-color: rgba(255,255,255,.25); }
+
+#main { flex: 1; display: flex; overflow: hidden; }
+#filterRail {
+  width: 250px; flex-shrink: 0;
+  background: #fff; border-right: 1px solid #e3e6ec;
+  padding: 14px 16px; overflow-y: auto;
+}
+#filterRail h3 {
+  font-size: 10.5px; font-weight: 700; color: #6b7280;
+  text-transform: uppercase; letter-spacing: 1px;
+  margin-bottom: 10px; padding-bottom: 8px;
+  border-bottom: 1px solid #e6e9ef;
+}
+#filterRail .filter-section { display: none; }
+#filterRail .filter-section.active { display: block; }
+#filterRail .filter-section .controls {
+  background: transparent !important; box-shadow: none !important;
+  padding: 0 !important; margin: 0 !important;
+  display: flex !important; flex-direction: column !important;
+  gap: 8px !important;
+}
+#filterRail .filter-section .view-btns { display: grid !important; grid-template-columns: repeat(3, 1fr); gap: 4px; width: 100%; }
+#filterRail .filter-section .view-btn { padding: 6px 4px !important; font-size: 11px !important; }
+#filterRail .filter-section .nav-btns { display: flex; align-items: center; gap: 4px; width: 100%; }
+#filterRail .filter-section .period-label { flex: 1; min-width: 0 !important; font-size: 11.5px !important; padding: 5px 8px !important; }
+#filterRail .filter-section .date-input { width: 100% !important; }
+#filterRail .filter-section .search-box { width: 100% !important; }
+#filterRail .filter-section .export-btn { width: 100% !important; }
+
+#content { flex: 1; overflow-y: auto; background: #f3f5f9; }
+.page-header {
+  background: #fff !important;
+  padding: 16px 24px !important;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid #e3e6ec; color: #1f2937 !important;
+}
+.page-header h2 { font-size: 17px !important; font-weight: 700 !important; color: #1f2937 !important; letter-spacing: -.2px; }
+.page-header small { font-size: 11.5px !important; color: #6b7280 !important; opacity: 1 !important; }
+.page-actions { display: flex; gap: 8px; }
+.page-action-btn {
+  padding: 7px 11px; font-size: 11.5px; font-weight: 600;
+  background: #fff; color: #374151;
+  border: 1px solid #d1d5db; border-radius: 5px;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  font-family: inherit; transition: all .12s;
+}
+.page-action-btn:hover { background: #f3f4f6; border-color: #9ca3af; }
+.page-action-btn.green { background: #217346; border-color: #1a5c38; color: #fff; }
+.page-action-btn.green:hover { background: #1a5c38; }
+.page-action-btn.blue { background: #1a6ec0; border-color: #1252a0; color: #fff; }
+.page-action-btn.blue:hover { background: #1252a0; }
+
+/* Tab settings dropdown */
+.tabs-menu {
+  position: absolute; top: 50px; right: 14px; background: #fff;
+  border: 1px solid #d1d5db; border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  padding: 10px 0; min-width: 230px; max-height: 460px; overflow-y: auto;
+  z-index: 200; display: none;
+}
+.tabs-menu.open { display: block; }
+.tabs-menu-header { font-size: 10.5px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .8px; padding: 4px 14px 8px; border-bottom: 1px solid #f3f4f6; }
+.tabs-menu label {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 14px; font-size: 12px; color: #374151;
+  cursor: pointer; user-select: none;
+}
+.tabs-menu label:hover { background: #f3f4f6; }
+.tabs-menu input { margin: 0; }
+.tabs-menu .actions { padding: 8px 14px 4px; border-top: 1px solid #f3f4f6; display: flex; gap: 6px; }
+.tabs-menu .actions button {
+  flex: 1; padding: 5px 8px; font-size: 11px; font-weight: 600;
+  background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 4px;
+  cursor: pointer; font-family: inherit;
+}
+.tabs-menu .actions button:hover { background: #f3f4f6; }
 """
 
 # ── JavaScript ────────────────────────────────────────────────────────────────
@@ -463,18 +604,21 @@ function sdy(a,b){return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.get
 /* ===== Sidebar nav ===== */
 function showPage(id){
   curPage=id;
-  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-btn,.nav-item').forEach(b=>b.classList.remove('active'));
   const btn=document.getElementById('btn-'+id.replace(/[^a-zA-Z0-9]/g,'_'));
   if(btn) btn.classList.add('active');
   document.querySelectorAll('.page-section').forEach(s=>s.style.display='none');
   const sec=document.getElementById('sec-'+id.replace(/[^a-zA-Z0-9]/g,'_'));
-  if(sec){ sec.style.display='block'; document.getElementById('content').scrollTop=0; }
+  if(sec){ sec.style.display='block'; const c=document.getElementById('content'); if(c) c.scrollTop=0; }
+  // Move section controls into filter rail
+  populateFilterRail(id, sec);
   // Update header
   const titles={
     'billing':'AR / Billing Dashboard',
     'census':'Census Dashboard \u2014 Strive Fort Wayne, IN',
     'marketing':'Marketing Dashboard',
     'opportunities':'Opportunities Detail',
+    'referral':'Referral Active',
     'ur':'Utilization Review',
     'clinical':'Clinical \u2014 Group Notes',
     'operations':'Operations Dashboard',
@@ -485,12 +629,13 @@ function showPage(id){
     'census':'Census \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
     'marketing':'Opportunities by Created Date \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
     'opportunities':'Opportunities by Created Date \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
+    'referral':'Referral Active + Timeline \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
     'ur':'Report Auth \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
     'clinical':'GroupNotes \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
     'operations':'Census_Admitted \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
     'fieldexplorer':'Census \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
   };
-  const specialPages=new Set(['billing','census','marketing','opportunities','ur','clinical','operations','fieldexplorer']);
+  const specialPages=new Set(['billing','census','marketing','opportunities','referral','ur','clinical','operations','fieldexplorer']);
   document.getElementById('pageTitle').textContent = titles[id]||id;
   document.getElementById('pageSub').textContent   = subs[id]||'MASTER_Sunwave_New_PowerQuerry.xlsx';
   if(!specialPages.has(id)) renderGeneral(id);
@@ -504,6 +649,7 @@ function doRefresh(){
     else if(curPage==='census'){ renderCensusSpot();renderCensusTrend();renderCensusBreakdowns(); }
     else if(curPage==='marketing'){ renderMarketingSpot();renderMarketingTrend();renderMarketingDetail(); }
     else if(curPage==='opportunities'){ renderOpportunities(); }
+    else if(curPage==='referral'){ renderReferrals(); }
     else if(curPage==='ur'){ renderURSpot();renderURTrend(); }
     else if(curPage==='clinical'){ renderClinicalSpot();renderClinical(); }
     else if(curPage==='operations'){ renderOpsHeatmap();renderOpsDetail();renderOpsMonthlyIns(); }
@@ -868,48 +1014,176 @@ window.gNavigate = function(sheet, dir){
   gDate[sheet]=ref;gOffset[sheet]=0;renderGeneral(sheet);
 };
 
-// Build sidebar
-(function buildSidebar(){
-  const nav=document.getElementById('sidebarNav');
-  // Billing
-  const lbl1=document.createElement('div');lbl1.className='sb-section';lbl1.textContent='Billing';nav.appendChild(lbl1);
-  const btnB=document.createElement('button');btnB.className='nav-item active';btnB.id='btn-billing';btnB.textContent='AR / Billing Dashboard';
-  btnB.onclick=()=>showPage('billing');nav.appendChild(btnB);
-  // Census
-  const lblC=document.createElement('div');lblC.className='sb-section';lblC.textContent='Census';nav.appendChild(lblC);
-  const btnC=document.createElement('button');btnC.className='nav-item';btnC.id='btn-census';btnC.textContent='Census Dashboard';
-  btnC.onclick=()=>showPage('census');nav.appendChild(btnC);
-  // Marketing
-  const lblM=document.createElement('div');lblM.className='sb-section';lblM.textContent='Marketing';nav.appendChild(lblM);
-  const btnM=document.createElement('button');btnM.className='nav-item';btnM.id='btn-marketing';btnM.textContent='Marketing Dashboard';
-  btnM.onclick=()=>showPage('marketing');nav.appendChild(btnM);
-  // Opportunities
-  const lblO=document.createElement('div');lblO.className='sb-section';lblO.textContent='Opportunities';nav.appendChild(lblO);
-  const btnO=document.createElement('button');btnO.className='nav-item';btnO.id='btn-opportunities';btnO.textContent='Opportunities Detail';
-  btnO.onclick=()=>showPage('opportunities');nav.appendChild(btnO);
-  // Utilization Review
-  const lblUR=document.createElement('div');lblUR.className='sb-section';lblUR.textContent='Utilization Review';nav.appendChild(lblUR);
-  const btnUR=document.createElement('button');btnUR.className='nav-item';btnUR.id='btn-ur';btnUR.textContent='UR Dashboard';
-  btnUR.onclick=()=>showPage('ur');nav.appendChild(btnUR);
-  // Clinical
-  const lblCL=document.createElement('div');lblCL.className='sb-section';lblCL.textContent='Clinical';nav.appendChild(lblCL);
-  const btnCL=document.createElement('button');btnCL.className='nav-item';btnCL.id='btn-clinical';btnCL.textContent='Clinical / Group Notes';
-  btnCL.onclick=()=>showPage('clinical');nav.appendChild(btnCL);
-  // Operations
-  const lblOP=document.createElement('div');lblOP.className='sb-section';lblOP.textContent='Operations';nav.appendChild(lblOP);
-  const btnOP=document.createElement('button');btnOP.className='nav-item';btnOP.id='btn-operations';btnOP.textContent='Operations Dashboard';
-  btnOP.onclick=()=>showPage('operations');nav.appendChild(btnOP);
-  // Field Explorer
-  const lblFE=document.createElement('div');lblFE.className='sb-section';lblFE.textContent='Tools';nav.appendChild(lblFE);
-  const btnFE=document.createElement('button');btnFE.className='nav-item';btnFE.id='btn-fieldexplorer';btnFE.textContent='Field Explorer';
-  btnFE.onclick=()=>showPage('fieldexplorer');nav.appendChild(btnFE);
-  // Reports
-  const lbl2=document.createElement('div');lbl2.className='sb-section';lbl2.textContent='Reports';nav.appendChild(lbl2);
+// ── Tab definitions (id, label, group) ─────────────────────────────────────
+const TAB_DEFS = [
+  {id:'billing',       label:'Billing',          group:'Dashboards'},
+  {id:'census',        label:'Census',           group:'Dashboards'},
+  {id:'marketing',     label:'Marketing',        group:'Dashboards'},
+  {id:'opportunities', label:'Opportunities',    group:'Dashboards'},
+  {id:'referral',      label:'Referrals',        group:'Dashboards'},
+  {id:'ur',            label:'UR',               group:'Dashboards'},
+  {id:'clinical',      label:'Clinical',         group:'Dashboards'},
+  {id:'operations',    label:'Operations',       group:'Dashboards'},
+  {id:'fieldexplorer', label:'Field Explorer',   group:'Tools'},
+];
+
+// User-controlled tab visibility (persisted in localStorage)
+function loadTabVis(){
+  try { const c=JSON.parse(localStorage.getItem('sunwave_tab_visibility')||'{}'); return c; } catch(_){ return {}; }
+}
+function saveTabVis(v){ try { localStorage.setItem('sunwave_tab_visibility', JSON.stringify(v)); } catch(_){} }
+let tabVis = loadTabVis();
+function isTabVisible(id){ return tabVis[id] !== false; }
+
+// Build the top tab bar
+(function buildTabs(){
+  const bar=document.getElementById('tabBar');
+  if(!bar) return;
+  bar.innerHTML='';
+  TAB_DEFS.forEach((t,i)=>{
+    const b=document.createElement('button');
+    b.className='tab-btn'+(i===0?' active':'')+(isTabVisible(t.id)?'':' tab-hidden');
+    b.id='btn-'+t.id;
+    b.textContent=t.label;
+    b.title=t.label;
+    b.onclick=()=>showPage(t.id);
+    bar.appendChild(b);
+  });
+  // General report sheets follow as additional tabs (also toggleable)
   SHEETS.forEach(s=>{
-    const b=document.createElement('button');b.className='nav-item';b.id='btn-'+s.replace(/[^a-zA-Z0-9]/g,'_');
-    b.textContent=s;b.title=s;b.onclick=()=>showPage(s);nav.appendChild(b);
+    const id=s;
+    const b=document.createElement('button');
+    b.className='tab-btn'+(isTabVisible(id)?'':' tab-hidden');
+    b.id='btn-'+s.replace(/[^a-zA-Z0-9]/g,'_');
+    b.textContent=s; b.title=s;
+    b.onclick=()=>showPage(s);
+    bar.appendChild(b);
   });
 })();
+
+// Build the tab visibility menu (gear button)
+(function buildTabsMenu(){
+  const m=document.getElementById('tabsMenu');
+  if(!m) return;
+  let h='<div class="tabs-menu-header">Show / Hide Tabs</div>';
+  // Dashboards
+  h+='<div class="tabs-menu-header" style="border:none;padding-top:6px">Dashboards</div>';
+  TAB_DEFS.forEach(t=>{
+    h+='<label><input type="checkbox" data-tab="'+t.id+'" '+(isTabVisible(t.id)?'checked':'')+'> '+esc(t.label)+'</label>';
+  });
+  // Reports
+  h+='<div class="tabs-menu-header" style="border:none;padding-top:6px">Report Tabs</div>';
+  SHEETS.forEach(s=>{
+    h+='<label><input type="checkbox" data-tab="'+esc(s)+'" '+(isTabVisible(s)?'checked':'')+'> '+esc(s)+'</label>';
+  });
+  h+='<div class="actions"><button onclick="setAllTabsVisible(true)">Show all</button><button onclick="setAllTabsVisible(false)">Hide all</button></div>';
+  m.innerHTML=h;
+  m.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+    cb.onchange=()=>{
+      const id=cb.getAttribute('data-tab');
+      tabVis[id]=cb.checked;
+      saveTabVis(tabVis);
+      applyTabVisibility();
+    };
+  });
+})();
+function setAllTabsVisible(v){
+  TAB_DEFS.forEach(t=>tabVis[t.id]=v);
+  SHEETS.forEach(s=>tabVis[s]=v);
+  saveTabVis(tabVis);
+  // Refresh checkboxes
+  document.querySelectorAll('#tabsMenu input[type=checkbox]').forEach(cb=>cb.checked=v);
+  applyTabVisibility();
+}
+function applyTabVisibility(){
+  document.querySelectorAll('#tabBar .tab-btn').forEach(b=>{
+    const id=b.id.replace(/^btn-/,'');
+    // Map ID back to original tab id (might be sanitized for sheets)
+    const def = TAB_DEFS.find(t=>t.id===id);
+    let realId = def ? def.id : null;
+    if(!realId){
+      // Sheet name (sanitized)
+      realId = SHEETS.find(s=>s.replace(/[^a-zA-Z0-9]/g,'_')===id) || id;
+    }
+    if(isTabVisible(realId)) b.classList.remove('tab-hidden');
+    else b.classList.add('tab-hidden');
+  });
+}
+function toggleTabsMenu(e){
+  if(e) e.stopPropagation();
+  document.getElementById('tabsMenu').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  const m=document.getElementById('tabsMenu');
+  if(!m) return;
+  if(!m.contains(e.target) && !e.target.closest('.topbar-action')){
+    m.classList.remove('open');
+  }
+});
+
+// ── Filter rail population ────────────────────────────────────────────────
+function populateFilterRail(pageId, sec){
+  const rail=document.getElementById('filterContent');
+  if(!rail || !sec) return;
+  rail.innerHTML='';
+  // Find the section's primary controls bar (first .controls inside the section)
+  const ctrls = sec.querySelector('.controls');
+  if(ctrls){
+    const wrap=document.createElement('div');
+    wrap.className='filter-section active';
+    wrap.appendChild(ctrls.cloneNode(true));
+    // Hide the original to avoid duplication; keep its functionality via the clone
+    ctrls.style.display='none';
+    rail.appendChild(wrap);
+    // Re-bind oninput/onchange handlers in the clone (cloneNode preserves attribute handlers in HTML, but inline event attributes carry over)
+  } else {
+    rail.innerHTML='<div style="font-size:11.5px;color:#9ca3af;font-style:italic">No filters available for this view.</div>';
+  }
+}
+
+// ── Excel export (SheetJS) ────────────────────────────────────────────────
+function exportPageToExcel(){
+  if(typeof XLSX === 'undefined') { alert('Excel library not loaded yet.'); return; }
+  const sec = document.querySelector('.page-section[style*="block"], .page-section:not([style*="none"])');
+  const active = document.querySelector('.page-section[style="display: block"], .page-section[style*="display:block"]');
+  const target = active || sec;
+  if(!target){ alert('Nothing to export.'); return; }
+  const wb = XLSX.utils.book_new();
+  const tables = target.querySelectorAll('table');
+  if(!tables.length){ alert('No tables on this page to export.'); return; }
+  let sheetIdx=1;
+  tables.forEach(t=>{
+    try {
+      const ws = XLSX.utils.table_to_sheet(t);
+      const name = ('Sheet'+(sheetIdx++)).slice(0,31);
+      XLSX.utils.book_append_sheet(wb, ws, name);
+    } catch(e){ console.warn('Skip table:', e); }
+  });
+  const fname = 'Sunwave_'+(curPage||'export').replace(/[^a-zA-Z0-9]/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.xlsx';
+  XLSX.writeFile(wb, fname);
+}
+
+// ── PNG export (html2canvas) ──────────────────────────────────────────────
+function exportPageToPNG(){
+  if(typeof html2canvas === 'undefined') { alert('Image library not loaded yet.'); return; }
+  const target = document.querySelector('.page-section[style*="block"], .page-section:not([style*="none"])');
+  if(!target){ alert('Nothing to export.'); return; }
+  const btn = document.querySelector('.page-action-btn.blue');
+  const orig = btn ? btn.innerHTML : '';
+  if(btn) btn.innerHTML='Capturing...';
+  html2canvas(target, { backgroundColor:'#f3f5f9', scale: 1.5, useCORS: true }).then(canvas=>{
+    canvas.toBlob(blob=>{
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download='Sunwave_'+(curPage||'export').replace(/[^a-zA-Z0-9]/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.png';
+      a.click();
+      if(btn) btn.innerHTML=orig;
+    });
+  }).catch(e=>{
+    console.error(e); alert('PNG export failed: '+e.message);
+    if(btn) btn.innerHTML=orig;
+  });
+}
 
 // Build section containers
 (function buildSections(){
@@ -1448,6 +1722,125 @@ function renderOpportunities(){
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   REFERRAL ACTIVE LOGIC (with timeline expand/collapse)
+═══════════════════════════════════════════════════════════════ */
+const RFROWS = JSON.parse(document.getElementById('refData').textContent);
+// Build referral timeline lookup (Timeline rows where associated_with == 'Referral')
+const REF_TL_BY_ID = (function(){
+  const m={};
+  TLROWS.forEach(t=>{
+    // Treat as referral timeline if oid matches a referral_id, OR associated_with hints 'Referral'
+    if(!t.oid) return;
+    (m[t.oid]=m[t.oid]||[]).push(t);
+  });
+  Object.keys(m).forEach(k=>m[k].sort((a,b)=>(b.sortKey||0)-(a.sortKey||0)));
+  return m;
+})();
+const refExpanded = new Set();
+function refToggle(id){
+  if(refExpanded.has(id)) refExpanded.delete(id); else refExpanded.add(id);
+  renderReferrals();
+}
+
+let refNavView='all', refNavDate=null, refSearch='';
+for(const r of RFROWS){const d=pd(r.co);if(d){refNavDate=d;break;}}
+if(!refNavDate) refNavDate=new Date();
+
+function refNavRange(){
+  if(refNavView==='all')  return{from:new Date(1900,0,1),to:new Date(2100,0,1)};
+  if(refNavView==='year') return{from:new Date(refNavDate.getFullYear(),0,1),to:new Date(refNavDate.getFullYear(),11,31)};
+  if(refNavView==='month')return{from:som(refNavDate),to:eom(refNavDate)};
+  if(refNavView==='week'){const ws=gwk(refNavDate),we=new Date(ws);we.setDate(we.getDate()+6);return{from:ws,to:we};}
+  return{from:new Date(refNavDate),to:new Date(refNavDate)};
+}
+function refNavLabel(){
+  if(refNavView==='all')  return 'All Time';
+  if(refNavView==='year') return String(refNavDate.getFullYear());
+  if(refNavView==='month')return refNavDate.toLocaleString('default',{month:'long'})+' '+refNavDate.getFullYear();
+  if(refNavView==='week'){const{from,to}=refNavRange();return fd(from)+' – '+fd(to);}
+  return fd(refNavDate);
+}
+function refNavigate(dir){
+  if(refNavView==='all') return;
+  if(refNavView==='year') refNavDate=new Date(refNavDate.getFullYear()+dir,0,1);
+  else if(refNavView==='month')refNavDate=new Date(refNavDate.getFullYear(),refNavDate.getMonth()+dir,1);
+  else if(refNavView==='week')refNavDate=new Date(refNavDate.getTime()+dir*7*86400000);
+  else refNavDate=new Date(refNavDate.getTime()+dir*86400000);
+  renderReferrals();
+}
+function refSetView(v){refNavView=v;renderReferrals();if(curPage==='referral'){const sec=document.getElementById('sec-referral');populateFilterRail('referral',sec);}}
+function refJump(val){if(!val)return;const p=val.split('-');refNavDate=new Date(+p[0],+p[1]-1,+p[2]);renderReferrals();}
+
+function renderReferralTimelineEntries(rid){
+  const entries = REF_TL_BY_ID[rid] || [];
+  if(!entries.length) return '<div style="padding:14px;color:#999;font-style:italic">No timeline entries for this referral.</div>';
+  let h='<div style="padding:8px 14px;background:#f5f8fc"><table style="width:100%;border-collapse:collapse;font-size:11.5px">';
+  h+='<thead><tr style="background:#1a3a5c;color:#fff"><th style="padding:6px 10px;text-align:left">Date</th><th style="padding:6px 10px;text-align:left">Type</th><th style="padding:6px 10px;text-align:left">Status</th><th style="padding:6px 10px;text-align:left">By</th><th style="padding:6px 10px;text-align:left">Note</th></tr></thead><tbody>';
+  entries.forEach(t=>{
+    h+='<tr style="border-bottom:1px solid #e0e6ee;background:#fff"><td style="padding:5px 10px;white-space:nowrap;color:#1a3a5c;font-weight:600">'+esc(t.date)+'</td>'
+      +'<td style="padding:5px 10px;white-space:nowrap">'+esc(t.type)+'</td>'
+      +'<td style="padding:5px 10px;white-space:nowrap">'+esc(t.wf)+'</td>'
+      +'<td style="padding:5px 10px;white-space:nowrap">'+esc(t.by)+'</td>'
+      +'<td style="padding:5px 10px;white-space:normal;max-width:600px">'+esc(t.text||t.subject)+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  return h;
+}
+
+function renderReferrals(){
+  const lbl=document.getElementById('refPeriodLabel'); if(lbl) lbl.innerHTML=refNavLabel();
+  ['Month','Week','Day','Year','All'].forEach(v=>{const e=document.getElementById('refView'+v);if(e)e.className='view-btn'+(refNavView===v.toLowerCase()?' active':'');});
+  const{from,to}=refNavRange();
+  let rows=RFROWS.filter(r=>{ if(refNavView==='all') return true; const d=pd(r.co); return d&&d>=from&&d<=to; });
+  if(refSearch){const s=refSearch.toLowerCase();rows=rows.filter(r=>Object.values(r).some(v=>String(v).toLowerCase().includes(s)));}
+
+  // KPIs
+  const totalTL = rows.reduce((s,r)=>s+(REF_TL_BY_ID[r.id]||[]).length,0);
+  const types = new Set(rows.map(r=>r.type).filter(Boolean));
+  if(document.getElementById('refKpiTotal')) document.getElementById('refKpiTotal').textContent = rows.length;
+  if(document.getElementById('refKpiTimeline')) document.getElementById('refKpiTimeline').textContent = totalTL;
+  if(document.getElementById('refKpiTypes')) document.getElementById('refKpiTypes').textContent = types.size;
+
+  // By type
+  const tMap={}; rows.forEach(r=>{ if(r.type) tMap[r.type]=(tMap[r.type]||0)+1; });
+  let ht='<table class="break-table"><thead><tr><th>Type</th><th>#</th><th>%</th></tr></thead><tbody>';
+  Object.entries(tMap).sort((a,b)=>b[1]-a[1]).forEach(([k,v])=>ht+='<tr><td>'+esc(k)+'</td><td class="num">'+v+'</td><td class="num">'+(rows.length>0?(v/rows.length*100).toFixed(1)+'%':'0%')+'</td></tr>');
+  ht+='<tr class="total-row"><td>Total</td><td class="num">'+rows.length+'</td><td class="num">100%</td></tr></tbody></table>';
+  if(document.getElementById('refTypeTable')) document.getElementById('refTypeTable').innerHTML=ht;
+
+  // By owner
+  const oMap={}; rows.forEach(r=>{ if(r.owner) oMap[r.owner]=(oMap[r.owner]||0)+1; });
+  let ho='<table class="break-table"><thead><tr><th>Owner</th><th>#</th><th>%</th></tr></thead><tbody>';
+  Object.entries(oMap).sort((a,b)=>b[1]-a[1]).slice(0,15).forEach(([k,v])=>ho+='<tr><td>'+esc(k)+'</td><td class="num">'+v+'</td><td class="num">'+(rows.length>0?(v/rows.length*100).toFixed(1)+'%':'0%')+'</td></tr>');
+  ho+='<tr class="total-row"><td>Total</td><td class="num">'+rows.length+'</td><td class="num">100%</td></tr></tbody></table>';
+  if(document.getElementById('refOwnerTable')) document.getElementById('refOwnerTable').innerHTML=ho;
+
+  // Table with expand/collapse + timeline rows
+  const cols=['id','co','name','type','stage','owner','city','state'];
+  const hdrs=['Referral ID','Created On','Name','Type','Stage','Owner','City','State'];
+  let h='<div class="table-wrap"><table><thead><tr><th style="width:36px"></th>';
+  cols.forEach((c,i)=>{h+='<th>'+hdrs[i]+'</th>';});
+  h+='<th style="width:80px">Timeline</th></tr></thead><tbody>';
+  const pg=rows.slice(0,200);
+  if(!pg.length) h+='<tr><td colspan="'+(cols.length+2)+'" class="no-data">No referrals.</td></tr>';
+  pg.forEach(r=>{
+    const isOpen=refExpanded.has(r.id);
+    const tlCount=(REF_TL_BY_ID[r.id]||[]).length;
+    const arrow=isOpen?'&#9660;':'&#9658;';
+    h+='<tr style="cursor:pointer" onclick="refToggle(\''+esc(r.id)+'\')">'
+      +'<td style="text-align:center;color:#1a6ec0;font-weight:700">'+arrow+'</td>';
+    cols.forEach(c=>{ h+='<td title="'+esc(r[c])+'">'+esc(r[c])+'</td>'; });
+    h+='<td style="text-align:center;font-size:11px">'+(tlCount>0?'<span style="background:#1a6ec0;color:#fff;padding:2px 8px;border-radius:10px;font-weight:600">'+tlCount+'</span>':'-')+'</td></tr>';
+    if(isOpen){
+      h+='<tr class="tl-row"><td colspan="'+(cols.length+2)+'" style="padding:0;background:#f5f8fc">'+renderReferralTimelineEntries(r.id)+'</td></tr>';
+    }
+  });
+  h+='</tbody></table></div>';
+  if(rows.length>200) h+='<div class="page-info" style="margin-top:6px">Showing 200 of '+rows.length+' records.</div>';
+  if(document.getElementById('refTableWrap')) document.getElementById('refTableWrap').innerHTML=h;
+}
+
+/* ═══════════════════════════════════════════════════════════════
    UTILIZATION REVIEW LOGIC
 ═══════════════════════════════════════════════════════════════ */
 const AROWS = JSON.parse(document.getElementById('authData').textContent);
@@ -1785,6 +2178,7 @@ function runDashboard(){
   renderMarketingTrend();
   renderMarketingDetail();
   renderOpportunities();
+  renderReferrals();
   renderURSpot();
   renderURTrend();
   renderClinicalSpot();
@@ -2089,6 +2483,41 @@ FIELD_EXPLORER_SECTION = """
 </div>
 """
 
+REFERRAL_SECTION = """
+<div class="page-section" id="sec-referral" style="display:none">
+  <div class="main">
+    <h2 class="section-title">REFERRAL ACTIVE &mdash; Period View</h2>
+    <div class="controls">
+      <div class="view-btns">
+        <button id="refViewMonth" class="view-btn"        onclick="refSetView('month')">Month</button>
+        <button id="refViewWeek"  class="view-btn"        onclick="refSetView('week')">Week</button>
+        <button id="refViewDay"   class="view-btn"        onclick="refSetView('day')">Day</button>
+        <button id="refViewYear"  class="view-btn"        onclick="refSetView('year')">Year</button>
+        <button id="refViewAll"   class="view-btn active" onclick="refSetView('all')">Show All</button>
+      </div>
+      <div class="nav-btns">
+        <button class="period-nav-btn" onclick="refNavigate(-1)">&#8249;</button>
+        <span class="period-label" id="refPeriodLabel"></span>
+        <button class="period-nav-btn" onclick="refNavigate(1)">&#8250;</button>
+      </div>
+      <input type="date" class="date-input" title="Jump to date" onchange="refJump(this.value)">
+      <input type="text" class="search-box" placeholder="Search referrals..." oninput="refSearch=this.value;renderReferrals()">
+    </div>
+    <div class="stats-bar">
+      <div class="stat-card"><div class="val" id="refKpiTotal">-</div><div class="lbl">Active Referrals</div></div>
+      <div class="stat-card green"><div class="val" id="refKpiTimeline">-</div><div class="lbl">Timeline Entries</div></div>
+      <div class="stat-card orange"><div class="val" id="refKpiTypes">-</div><div class="lbl">Distinct Types</div></div>
+    </div>
+    <div class="break-grid">
+      <div class="break-card"><h3>BY REFERRAL TYPE</h3><div id="refTypeTable"></div></div>
+      <div class="break-card"><h3>BY OWNER</h3><div id="refOwnerTable"></div></div>
+    </div>
+    <h2 class="section-title">REFERRAL LIST &mdash; click row to expand timeline</h2>
+    <div id="refTableWrap"></div>
+  </div>
+</div>
+"""
+
 html = (
     '<!DOCTYPE html>\n<html lang="en">\n<head>\n'
     '<meta charset="UTF-8">\n'
@@ -2098,31 +2527,48 @@ html = (
     '</head>\n<body>\n'
     '<div id="app">\n'
 
-    # Sidebar
-    '  <div id="sidebar">\n'
-    '    <div class="sb-header"><h1>Sunwave Dashboard</h1><p>Provident Healthcare Management</p></div>\n'
-    '    <button class="refresh-btn" onclick="doRefresh()">&#8635;&nbsp; Refresh</button>\n'
-    '    <div class="sb-nav" id="sidebarNav"></div>\n'
+    # Topbar
+    '  <div id="topbar">\n'
+    '    <div class="brand"><span class="name">Sunwave Dashboard</span><span class="sub">Provident Healthcare Management</span></div>\n'
+    '    <nav id="tabBar"></nav>\n'
+    '    <button class="topbar-action" onclick="toggleTabsMenu(event)" title="Show / hide tabs">&#9881;&nbsp; Tabs</button>\n'
+    '    <button class="topbar-action" onclick="doRefresh()" title="Refresh data">&#8635;&nbsp; Refresh</button>\n'
     '  </div>\n'
+    '  <div id="tabsMenu" class="tabs-menu"></div>\n'
 
-    # Content
-    '  <div id="content">\n'
-    '    <div class="page-header">\n'
-    '      <div><h2 id="pageTitle">AR / Billing Dashboard</h2>\n'
-    '           <small id="pageSub">Payment Report Deposit Date &mdash; MASTER_Sunwave_New_PowerQuerry.xlsx</small></div>\n'
-    '    </div>\n'
-    '    <div id="sectionsWrap">\n'
+    # Main: filter rail + content
+    '  <div id="main">\n'
+    '    <aside id="filterRail">\n'
+    '      <h3>Filters</h3>\n'
+    '      <div id="filterContent"></div>\n'
+    '    </aside>\n'
+    '    <div id="content">\n'
+    '      <div class="page-header">\n'
+    '        <div><h2 id="pageTitle">AR / Billing Dashboard</h2>\n'
+    '             <small id="pageSub">Payment Report Deposit Date &mdash; MASTER_Sunwave_New_PowerQuerry.xlsx</small></div>\n'
+    '        <div class="page-actions">\n'
+    '          <button class="page-action-btn green" onclick="exportPageToExcel()" title="Export current page tables to Excel">&#8595;&nbsp; Excel</button>\n'
+    '          <button class="page-action-btn blue"  onclick="exportPageToPNG()"  title="Download current page as PNG image">&#8595;&nbsp; PNG</button>\n'
+    '        </div>\n'
+    '      </div>\n'
+    '      <div id="sectionsWrap">\n'
     + BILLING_SECTION
     + CENSUS_SECTION
     + MARKETING_SECTION
     + OPPORTUNITIES_SECTION
+    + REFERRAL_SECTION
     + UR_SECTION
     + CLINICAL_SECTION
     + OPERATIONS_SECTION
     + FIELD_EXPLORER_SECTION +
+    '      </div>\n'
     '    </div>\n'
     '  </div>\n'
     '</div>\n'
+
+    # External libs
+    '<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>\n'
+    '<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>\n'
 
     # Data
     '<script type="application/json" id="generalData">' + general_js + '</script>\n'
@@ -2134,6 +2580,7 @@ html = (
     '<script type="application/json" id="opsData">'     + ops_js     + '</script>\n'
     '<script type="application/json" id="gnData">'      + gnotes_js  + '</script>\n'
     '<script type="application/json" id="tlData">'       + timeline_js+ '</script>\n'
+    '<script type="application/json" id="refData">'      + referral_js+ '</script>\n'
     '<script>' + JS + '</script>\n'
     '</body>\n</html>'
 )

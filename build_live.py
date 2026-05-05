@@ -27,7 +27,7 @@ CSS = block('CSS')
 JS  = block('JS')
 SECTIONS = {n: block(n) for n in [
     'BILLING_SECTION','CENSUS_SECTION','MARKETING_SECTION','OPPORTUNITIES_SECTION',
-    'UR_SECTION','CLINICAL_SECTION','OPERATIONS_SECTION','FIELD_EXPLORER_SECTION',
+    'REFERRAL_SECTION','UR_SECTION','CLINICAL_SECTION','OPERATIONS_SECTION','FIELD_EXPLORER_SECTION',
 ]}
 
 # ── Add CSS for login + loading splash ──────────────────────────────────────
@@ -336,17 +336,30 @@ LOADER_JS = """
       return isNaN(d) ? 0 : d.getTime()/1000;
     }
     const timeline_rows = map('Timeline', (r, idx) => ({
-      oid:     xStr(r[idx('opportunity_id')]),
+      oid:     xStr(r[idx('opportunity_id')]) || xStr(r[idx('associated_with_id')]),
       date:    xDateTime(r[idx('activity_date')]),
       subject: xStr(r[idx('task_subject')]),
       type:    xStr(r[idx('type')]),
       by:      xStr(r[idx('created_by_name')]),
       wf:      xStr(r[idx('workflow_status')]),
       text:    xStr(r[idx('text')]),
+      assoc:   xStr(r[idx('associated_with')]),
       sortKey: xSortKey(r[idx('activity_date')]),
     }));
 
-    return { raw_data, tab_config, billing_rows, census_rows, opp_rows, auth_rows, ops_rows, gn_rows, timeline_rows };
+    // Referral Active rows
+    const referral_rows = map('Referral Active', (r, idx) => ({
+      id:    xStr(r[idx('referral_id')]) || xStr(r[idx('id')]),
+      co:    xDate(r[idx('created_on')]),
+      name:  xStr(r[idx('referral name')] || r[idx('name')]),
+      type:  xStr(r[idx('referral type')]),
+      stage: xStr(r[idx('referral source stage')]),
+      owner: xStr(r[idx('referral_source_owner')]),
+      city:  xStr(r[idx('referral source city')]),
+      state: xStr(r[idx('referral source state')]),
+    }));
+
+    return { raw_data, tab_config, billing_rows, census_rows, opp_rows, auth_rows, ops_rows, gn_rows, timeline_rows, referral_rows };
   }
 
   function inject(id, obj){ document.getElementById(id).textContent = JSON.stringify(obj); }
@@ -361,6 +374,7 @@ LOADER_JS = """
     inject('opsData',     t.ops_rows);
     inject('gnData',      t.gn_rows);
     inject('tlData',      t.timeline_rows);
+    inject('refData',     t.referral_rows);
   }
 
   function bootDashboard(){
@@ -493,30 +507,44 @@ html = (
 '  </div>\n'
 '</div>\n'
 
-# Main app (hidden until data loads)
+# Main app (hidden until data loads) — new top-tab + filter rail layout
 '<div id="app" style="display:none">\n'
-'  <div id="sidebar">\n'
-'    <div class="sb-header"><h1>Sunwave Dashboard</h1><p>Provident Healthcare Management</p></div>\n'
-'    <button class="refresh-btn" onclick="location.reload()">&#8635;&nbsp; Refresh</button>\n'
-'    <div class="sb-nav" id="sidebarNav"></div>\n'
+'  <div id="topbar">\n'
+'    <div class="brand"><span class="name">Sunwave Dashboard</span><span class="sub">Provident Healthcare Management</span></div>\n'
+'    <nav id="tabBar"></nav>\n'
+'    <button class="topbar-action" onclick="toggleTabsMenu(event)" title="Show / hide tabs">&#9881;&nbsp; Tabs</button>\n'
+'    <button class="topbar-action" onclick="location.reload()" title="Refresh data">&#8635;&nbsp; Refresh</button>\n'
 '  </div>\n'
-'  <div id="content">\n'
-'    <div class="page-header">\n'
-'      <div><h2 id="pageTitle">AR / Billing Dashboard</h2>\n'
-'           <small id="pageSub">Live from SharePoint</small></div>\n'
-'    </div>\n'
-'    <div id="sectionsWrap">\n'
+'  <div id="tabsMenu" class="tabs-menu"></div>\n'
+'  <div id="main">\n'
+'    <aside id="filterRail"><h3>Filters</h3><div id="filterContent"></div></aside>\n'
+'    <div id="content">\n'
+'      <div class="page-header">\n'
+'        <div><h2 id="pageTitle">AR / Billing Dashboard</h2>\n'
+'             <small id="pageSub">Live from SharePoint</small></div>\n'
+'        <div class="page-actions">\n'
+'          <button class="page-action-btn green" onclick="exportPageToExcel()">&#8595;&nbsp; Excel</button>\n'
+'          <button class="page-action-btn blue"  onclick="exportPageToPNG()">&#8595;&nbsp; PNG</button>\n'
+'        </div>\n'
+'      </div>\n'
+'      <div id="sectionsWrap">\n'
 + SECTIONS['BILLING_SECTION']
 + SECTIONS['CENSUS_SECTION']
 + SECTIONS['MARKETING_SECTION']
 + SECTIONS['OPPORTUNITIES_SECTION']
++ SECTIONS.get('REFERRAL_SECTION', '')
 + SECTIONS['UR_SECTION']
 + SECTIONS['CLINICAL_SECTION']
 + SECTIONS['OPERATIONS_SECTION']
 + SECTIONS['FIELD_EXPLORER_SECTION'] +
+'      </div>\n'
 '    </div>\n'
 '  </div>\n'
 '</div>\n'
+
+# External libs (Excel + PNG export)
+'<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>\n'
+'<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>\n'
 
 # Empty data placeholders (populated after Graph fetch)
 '<script type="application/json" id="generalData">{}</script>\n'
@@ -528,6 +556,7 @@ html = (
 '<script type="application/json" id="opsData">[]</script>\n'
 '<script type="application/json" id="gnData">[]</script>\n'
 '<script type="application/json" id="tlData">[]</script>\n'
+'<script type="application/json" id="refData">[]</script>\n'
 
 # MSAL.js library (v3 - requires initialize()). Multiple CDNs as fallback.
 '<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"></script>\n'
