@@ -54,5 +54,13 @@ jobs:
             echo "No changes to dashboard; skipping commit."
           else
             git commit -m "Auto-refresh dashboard data [skip ci]"
-            git push
+            # Rebase onto whatever's on origin (covers manual pushes that
+            # landed between this run starting and now), then push. Retry once
+            # if a race still occurs.
+            for attempt in 1 2 3; do
+              git pull --rebase --autostash origin main && \
+              git push origin HEAD:main && break
+              echo "Push attempt $attempt failed, retrying..."
+              sleep 3
+            done
           fi
