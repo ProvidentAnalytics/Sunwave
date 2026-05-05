@@ -505,22 +505,39 @@ body {
   box-shadow: 0 2px 16px rgba(10,61,92,.25);
   border-bottom: none;
 }
-.brand { display: flex; flex-direction: column; line-height: 1.15; padding-right: 16px; }
+.brand { display: flex; align-items: center; gap: 14px; line-height: 1.15; }
+.brand-pill {
+  background: var(--teal); color: var(--navy);
+  font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700;
+  letter-spacing: .08em; padding: 5px 10px; border-radius: 4px;
+}
+.brand-text { display: flex; flex-direction: column; }
 .brand .name { font-size: 15px; font-weight: 600; color: #fff; letter-spacing: .2px; }
 .brand .sub  { font-size: 11px; color: rgba(255,255,255,.4); font-family: 'Space Mono', monospace; font-weight: 400; }
-#tabBar { flex: 1; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: thin; height: 100%; align-items: center; }
+
+/* Tab nav — separate white bar below the navy topbar */
+#tabBar {
+  background: var(--white); border-bottom: 1px solid var(--border);
+  padding: 0 28px; display: flex; flex-wrap: wrap; row-gap: 0;
+  position: sticky; top: 58px; z-index: 190;
+  box-shadow: 0 2px 8px rgba(10,61,92,.05);
+  height: auto; flex-shrink: 0; overflow-x: auto; scrollbar-width: thin;
+}
 #tabBar::-webkit-scrollbar { height: 3px; }
-#tabBar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.18); border-radius: 2px; }
+#tabBar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 .tab-btn {
-  padding: 7px 14px; background: transparent; color: rgba(255,255,255,.72);
-  border: none; border-radius: 6px;
+  padding: 12px 14px; border: none;
+  border-bottom: 3px solid transparent;
+  background: none;
   font-family: 'DM Sans', sans-serif; font-size: 12.5px; font-weight: 500;
-  cursor: pointer; white-space: nowrap; transition: all .15s; height: 32px;
+  color: var(--muted); cursor: pointer; white-space: nowrap;
+  transition: all .2s; margin-bottom: -1px; height: auto; border-radius: 0;
   display: inline-flex; align-items: center;
 }
-.tab-btn:hover { background: rgba(255,255,255,.08); color: #fff; }
+.tab-btn:hover { color: var(--navy); background: none; }
 .tab-btn.active {
-  background: var(--teal); color: var(--navy); font-weight: 700;
+  color: var(--navy); border-bottom-color: var(--teal);
+  font-weight: 700; background: none;
 }
 .tab-btn.tab-hidden { display: none; }
 .topbar-action {
@@ -2919,13 +2936,18 @@ html = (
     '</head>\n<body>\n'
     '<div id="app">\n'
 
-    # Topbar
+    # Topbar (navy) — brand + actions only
     '  <div id="topbar">\n'
-    '    <div class="brand"><span class="name">Sunwave Dashboard</span><span class="sub">Provident Healthcare Management</span></div>\n'
-    '    <nav id="tabBar"></nav>\n'
+    '    <div class="brand">\n'
+    '      <span class="brand-pill">SUNWAVE</span>\n'
+    '      <div class="brand-text"><span class="name">Sunwave Dashboard</span><span class="sub">Provident Healthcare Management</span></div>\n'
+    '    </div>\n'
+    '    <div style="flex:1"></div>\n'
     '    <button class="topbar-action" onclick="toggleTabsMenu(event)" title="Show / hide tabs">&#9881;&nbsp; Tabs</button>\n'
     '    <button class="topbar-action" onclick="doRefresh()" title="Refresh data">&#8635;&nbsp; Refresh</button>\n'
     '  </div>\n'
+    # Tab bar (white) — sticky below topbar
+    '  <nav id="tabBar"></nav>\n'
     '  <div id="tabsMenu" class="tabs-menu"></div>\n'
 
     # Main: filter rail + content
