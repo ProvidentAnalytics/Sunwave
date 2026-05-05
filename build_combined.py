@@ -660,20 +660,20 @@ function showPage(id){
     'fieldexplorer':'Field Explorer',
   };
   const subs={
-    'billing':'Payment Report Deposit Date \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
-    'census':'Census \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
-    'marketing':'Opportunities by Created Date \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
-    'opportunities':'Opportunities by Created Date \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
-    'referral':'Referral Active + Timeline \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
-    'crmtask':'CRM Task \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
-    'ur':'Report Auth \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
-    'clinical':'GroupNotes \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
-    'operations':'Census_Admitted \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
-    'fieldexplorer':'Census \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
+    'billing':'Payment Report Deposit Date',
+    'census':'Census',
+    'marketing':'Opportunities by Created Date',
+    'opportunities':'Opportunities by Created Date',
+    'referral':'Referral Active + Timeline',
+    'crmtask':'CRM Task',
+    'ur':'Report Auth',
+    'clinical':'GroupNotes',
+    'operations':'Census_Admitted',
+    'fieldexplorer':'Census',
   };
   const specialPages=new Set(['billing','census','marketing','opportunities','referral','crmtask','ur','clinical','operations','fieldexplorer']);
   document.getElementById('pageTitle').textContent = titles[id]||id;
-  document.getElementById('pageSub').textContent   = subs[id]||'MASTER_Sunwave_New_PowerQuerry.xlsx';
+  document.getElementById('pageSub').textContent   = subs[id]||'';
   if(!specialPages.has(id)) renderGeneral(id);
 }
 
@@ -2800,7 +2800,7 @@ html = (
     '    <div id="content">\n'
     '      <div class="page-header">\n'
     '        <div><h2 id="pageTitle">AR / Billing Dashboard</h2>\n'
-    '             <small id="pageSub">Payment Report Deposit Date &mdash; MASTER_Sunwave_New_PowerQuerry.xlsx</small></div>\n'
+    '             <small id="pageSub">Payment Report Deposit Date</small></div>\n'
     '        <div class="page-actions">\n'
     '          <button class="page-action-btn green" onclick="exportPageToExcel()" title="Export current page tables to Excel">&#8595;&nbsp; Excel</button>\n'
     '          <button class="page-action-btn blue"  onclick="exportPageToPNG()"  title="Download current page as PNG image">&#8595;&nbsp; PNG</button>\n'

@@ -858,20 +858,20 @@ function showPage(id){
     'fieldexplorer':'Field Explorer',
   };
   const subs={
-    'billing':'Payment Report Deposit Date \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
-    'census':'Census \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
-    'marketing':'Opportunities by Created Date \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
-    'opportunities':'Opportunities by Created Date \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
-    'referral':'Referral Active + Timeline \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
-    'crmtask':'CRM Task \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
-    'ur':'Report Auth \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
-    'clinical':'GroupNotes \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
-    'operations':'Census_Admitted \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
-    'fieldexplorer':'Census \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
+    'billing':'Payment Report Deposit Date',
+    'census':'Census',
+    'marketing':'Opportunities by Created Date',
+    'opportunities':'Opportunities by Created Date',
+    'referral':'Referral Active + Timeline',
+    'crmtask':'CRM Task',
+    'ur':'Report Auth',
+    'clinical':'GroupNotes',
+    'operations':'Census_Admitted',
+    'fieldexplorer':'Census',
   };
   const specialPages=new Set(['billing','census','marketing','opportunities','referral','crmtask','ur','clinical','operations','fieldexplorer']);
   document.getElementById('pageTitle').textContent = titles[id]||id;
-  document.getElementById('pageSub').textContent   = subs[id]||'MASTER_Sunwave_New_PowerQuerry.xlsx';
+  document.getElementById('pageSub').textContent   = subs[id]||'';
   if(!specialPages.has(id)) renderGeneral(id);
 }
 
