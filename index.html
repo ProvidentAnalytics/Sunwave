@@ -631,6 +631,60 @@ body { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Arial, sans-s
   </div>
 </div>
 
+<div class="page-section" id="sec-crmtask" style="display:none">
+  <div class="main">
+    <h2 class="section-title">CRM TASKS &mdash; Sunwave Timeline</h2>
+    <div class="controls">
+      <div class="view-btns">
+        <button id="ctViewMonth" class="view-btn"        onclick="ctSetView('month')">Month</button>
+        <button id="ctViewWeek"  class="view-btn"        onclick="ctSetView('week')">Week</button>
+        <button id="ctViewDay"   class="view-btn"        onclick="ctSetView('day')">Day</button>
+        <button id="ctViewYear"  class="view-btn"        onclick="ctSetView('year')">Year</button>
+        <button id="ctViewAll"   class="view-btn active" onclick="ctSetView('all')">Show All</button>
+      </div>
+      <div class="nav-btns">
+        <button class="period-nav-btn" onclick="ctNavigate(-1)">&#8249;</button>
+        <span class="period-label" id="ctPeriodLabel"></span>
+        <button class="period-nav-btn" onclick="ctNavigate(1)">&#8250;</button>
+      </div>
+      <input type="date" class="date-input" title="Jump to date" onchange="ctJump(this.value)">
+      <select class="date-input" id="ctStatusSel" onchange="ctStatus=this.value;renderCRMTask()">
+        <option value="">All Statuses</option>
+        <option>Open</option><option>Completed</option><option>In Progress</option><option>Closed</option>
+      </select>
+      <select class="date-input" id="ctTypeSel" onchange="ctType=this.value;renderCRMTask()">
+        <option value="">All Task Types</option>
+        <option>Call</option><option>Email</option><option>Text</option><option>Online</option><option>In Person</option>
+      </select>
+      <select class="date-input" id="ctAssocSel" onchange="ctAssoc=this.value;renderCRMTask()">
+        <option value="">All Entities</option>
+        <option>Referral</option><option>Opportunity</option><option>Patient</option>
+      </select>
+      <input type="text" class="search-box" placeholder="Search subject, text, names..." oninput="ctSearch=this.value;renderCRMTask()">
+      <button class="export-btn" onclick="ctExport()">&#8595; Export CSV</button>
+    </div>
+    <div class="stats-bar">
+      <div class="stat-card"><div class="val" id="ctKpiTotal">-</div><div class="lbl">Total Tasks</div></div>
+      <div class="stat-card green"><div class="val" id="ctKpiOpen">-</div><div class="lbl">Open</div></div>
+      <div class="stat-card orange"><div class="val" id="ctKpiOverdue">-</div><div class="lbl">Overdue</div></div>
+      <div class="stat-card"><div class="val" id="ctKpiCompleted">-</div><div class="lbl">Completed</div></div>
+      <div class="stat-card purple"><div class="val" id="ctKpiPeople">-</div><div class="lbl">People Assigned</div></div>
+    </div>
+    <div class="break-grid">
+      <div class="break-card"><h3>BY TASK TYPE</h3><div id="ctTypeTable"></div></div>
+      <div class="break-card"><h3>BY STATUS</h3><div id="ctStatusTable"></div></div>
+    </div>
+    <div class="break-grid">
+      <div class="break-card"><h3>BY ASSIGNED TO (TOP 12)</h3><div id="ctAssignedTable"></div></div>
+      <div class="break-card"><h3>BY ASSOCIATED ENTITY</h3><div id="ctAssocTable"></div></div>
+    </div>
+    <h2 class="section-title" style="margin-top:18px">MONTHLY TREND &mdash; Last 6 Months</h2>
+    <div class="trend-wrap"><div id="ctTrendTable"></div></div>
+    <h2 class="section-title">TASK LIST &mdash; click row to expand full note</h2>
+    <div id="ctTableWrap"></div>
+  </div>
+</div>
+
 <div class="page-section" id="sec-ur" style="display:none">
   <div class="main">
     <h2 class="section-title">SPOT / MOST RECENT &mdash; Auth Metrics by Period</h2>
@@ -740,6 +794,7 @@ body { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Arial, sans-s
 <script type="application/json" id="gnData">[]</script>
 <script type="application/json" id="tlData">[]</script>
 <script type="application/json" id="refData">[]</script>
+<script type="application/json" id="crmTaskData">[]</script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"></script>
 <script>if(!window.msal){document.write('<script src="https://unpkg.com/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"><\/script>');}</script>
 <script>if(!window.msal){document.write('<script src="https://alcdn.msauth.net/browser/3.10.0/js/msal-browser.min.js"><\/script>');}</script>
@@ -796,6 +851,7 @@ function showPage(id){
     'marketing':'Marketing Dashboard',
     'opportunities':'Opportunities Detail',
     'referral':'Referral Active',
+    'crmtask':'CRM Tasks',
     'ur':'Utilization Review',
     'clinical':'Clinical \u2014 Group Notes',
     'operations':'Operations Dashboard',
@@ -807,12 +863,13 @@ function showPage(id){
     'marketing':'Opportunities by Created Date \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
     'opportunities':'Opportunities by Created Date \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
     'referral':'Referral Active + Timeline \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
+    'crmtask':'CRM Task \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
     'ur':'Report Auth \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
     'clinical':'GroupNotes \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
     'operations':'Census_Admitted \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
     'fieldexplorer':'Census \u2014 MASTER_Sunwave_New_PowerQuerry.xlsx',
   };
-  const specialPages=new Set(['billing','census','marketing','opportunities','referral','ur','clinical','operations','fieldexplorer']);
+  const specialPages=new Set(['billing','census','marketing','opportunities','referral','crmtask','ur','clinical','operations','fieldexplorer']);
   document.getElementById('pageTitle').textContent = titles[id]||id;
   document.getElementById('pageSub').textContent   = subs[id]||'MASTER_Sunwave_New_PowerQuerry.xlsx';
   if(!specialPages.has(id)) renderGeneral(id);
@@ -827,6 +884,7 @@ function doRefresh(){
     else if(curPage==='marketing'){ renderMarketingSpot();renderMarketingTrend();renderMarketingDetail(); }
     else if(curPage==='opportunities'){ renderOpportunities(); }
     else if(curPage==='referral'){ renderReferrals(); }
+    else if(curPage==='crmtask'){ renderCRMTask(); }
     else if(curPage==='ur'){ renderURSpot();renderURTrend(); }
     else if(curPage==='clinical'){ renderClinicalSpot();renderClinical(); }
     else if(curPage==='operations'){ renderOpsHeatmap();renderOpsDetail();renderOpsMonthlyIns(); }
@@ -1193,6 +1251,7 @@ window.gNavigate = function(sheet, dir){
 
 // ── Tab definitions (id, label, group) ─────────────────────────────────────
 const TAB_DEFS = [
+  {id:'crmtask',       label:'CRM Tasks',        group:'Dashboards'},
   {id:'billing',       label:'Billing',          group:'Dashboards'},
   {id:'census',        label:'Census',           group:'Dashboards'},
   {id:'marketing',     label:'Marketing',        group:'Dashboards'},
@@ -2018,6 +2077,166 @@ function renderReferrals(){
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   CRM TASK LOGIC
+═══════════════════════════════════════════════════════════════ */
+const CTROWS = JSON.parse(document.getElementById('crmTaskData').textContent);
+let ctNavView='all', ctNavDate=null, ctSearch='', ctStatus='', ctType='', ctAssoc='';
+const ctExpanded = new Set();
+for(const r of CTROWS){const d=pd(r.activity);if(d){ctNavDate=d;break;}}
+if(!ctNavDate) ctNavDate=new Date();
+
+function ctNavRange(){
+  if(ctNavView==='all')  return{from:new Date(1900,0,1),to:new Date(2100,0,1)};
+  if(ctNavView==='year') return{from:new Date(ctNavDate.getFullYear(),0,1),to:new Date(ctNavDate.getFullYear(),11,31)};
+  if(ctNavView==='month')return{from:som(ctNavDate),to:eom(ctNavDate)};
+  if(ctNavView==='week'){const ws=gwk(ctNavDate),we=new Date(ws);we.setDate(we.getDate()+6);return{from:ws,to:we};}
+  return{from:new Date(ctNavDate),to:new Date(ctNavDate)};
+}
+function ctNavLabel(){
+  if(ctNavView==='all')  return 'All Time';
+  if(ctNavView==='year') return String(ctNavDate.getFullYear());
+  if(ctNavView==='month')return ctNavDate.toLocaleString('default',{month:'long'})+' '+ctNavDate.getFullYear();
+  if(ctNavView==='week'){const{from,to}=ctNavRange();return fd(from)+' – '+fd(to);}
+  return fd(ctNavDate);
+}
+function ctNavigate(dir){
+  if(ctNavView==='all') return;
+  if(ctNavView==='year') ctNavDate=new Date(ctNavDate.getFullYear()+dir,0,1);
+  else if(ctNavView==='month')ctNavDate=new Date(ctNavDate.getFullYear(),ctNavDate.getMonth()+dir,1);
+  else if(ctNavView==='week')ctNavDate=new Date(ctNavDate.getTime()+dir*7*86400000);
+  else ctNavDate=new Date(ctNavDate.getTime()+dir*86400000);
+  renderCRMTask();
+}
+function ctSetView(v){ctNavView=v;renderCRMTask();if(curPage==='crmtask'){const sec=document.getElementById('sec-crmtask');populateFilterRail('crmtask',sec);}}
+function ctJump(val){if(!val)return;const p=val.split('-');ctNavDate=new Date(+p[0],+p[1]-1,+p[2]);renderCRMTask();}
+function ctToggle(id){ if(ctExpanded.has(id)) ctExpanded.delete(id); else ctExpanded.add(id); renderCRMTask(); }
+
+function ctParseAct(s){
+  if(!s) return null;
+  const m = String(s).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m){const d=new Date(+m[3],+m[1]-1,+m[2]);d.setHours(0,0,0,0);return d;}
+  return pd(s);
+}
+
+function ctFiltered(){
+  const{from,to}=ctNavRange();
+  let rows=CTROWS.filter(r=>{
+    if(ctNavView!=='all'){ const d=ctParseAct(r.activity); if(!d) return false; if(d<from||d>to) return false; }
+    if(ctStatus && (r.status||'').toLowerCase()!==ctStatus.toLowerCase()) return false;
+    if(ctType && (r.task_type||'').toLowerCase()!==ctType.toLowerCase()) return false;
+    if(ctAssoc && (r.assoc||'').toLowerCase()!==ctAssoc.toLowerCase()) return false;
+    if(ctSearch){const s=ctSearch.toLowerCase();if(!Object.values(r).some(v=>String(v).toLowerCase().includes(s))) return false;}
+    return true;
+  });
+  rows.sort((a,b)=>(b.sortKey||0)-(a.sortKey||0));
+  return rows;
+}
+
+function ctExport(){
+  const rows=ctFiltered();
+  const cols=['id','aid','assoc','subject','type','task_type','status','created_by','assigned','activity','due','reminder','text'];
+  let csv=cols.map(c=>'"'+c+'"').join(',')+'\n';
+  rows.forEach(r=>{csv+=cols.map(c=>'"'+String(r[c]||'').replace(/"/g,'""').replace(/\n/g,' ')+'"').join(',')+'\n';});
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='crm_tasks_'+ctNavLabel().replace(/[^a-z0-9]/gi,'_')+'.csv';a.click();
+}
+
+function renderCRMTask(){
+  // View buttons
+  ['Month','Week','Day','Year','All'].forEach(v=>{const e=document.getElementById('ctView'+v);if(e)e.className='view-btn'+(ctNavView===v.toLowerCase()?' active':'');});
+  const lbl=document.getElementById('ctPeriodLabel'); if(lbl) lbl.innerHTML=ctNavLabel();
+  // Restore filter selects
+  const ss=document.getElementById('ctStatusSel'); if(ss) ss.value=ctStatus;
+  const ts=document.getElementById('ctTypeSel');   if(ts) ts.value=ctType;
+  const as=document.getElementById('ctAssocSel');  if(as) as.value=ctAssoc;
+
+  const rows=ctFiltered();
+  const today=new Date(); today.setHours(0,0,0,0);
+
+  // KPIs
+  const open = rows.filter(r=>(r.status||'').toLowerCase()==='open').length;
+  const completed = rows.filter(r=>{const s=(r.status||'').toLowerCase(); return s==='completed'||s==='closed';}).length;
+  const overdue = rows.filter(r=>{
+    if((r.status||'').toLowerCase()!=='open') return false;
+    const d=ctParseAct(r.due); return d && d<today;
+  }).length;
+  const people = new Set(rows.map(r=>r.assigned).filter(Boolean)).size;
+  if(document.getElementById('ctKpiTotal'))     document.getElementById('ctKpiTotal').textContent     = rows.length;
+  if(document.getElementById('ctKpiOpen'))      document.getElementById('ctKpiOpen').textContent      = open;
+  if(document.getElementById('ctKpiOverdue'))   document.getElementById('ctKpiOverdue').textContent   = overdue;
+  if(document.getElementById('ctKpiCompleted'))document.getElementById('ctKpiCompleted').textContent= completed;
+  if(document.getElementById('ctKpiPeople'))   document.getElementById('ctKpiPeople').textContent   = people;
+
+  // By task type
+  function mkBreak(keyFn, hdr, top){
+    const m={}; rows.forEach(r=>{const k=keyFn(r); if(!k) return; m[k]=(m[k]||0)+1;});
+    let entries=Object.entries(m).sort((a,b)=>b[1]-a[1]);
+    if(top) entries=entries.slice(0,top);
+    let h='<table class="break-table"><thead><tr><th>'+hdr+'</th><th># Tasks</th><th>%</th></tr></thead><tbody>';
+    entries.forEach(([k,v])=>h+='<tr><td>'+esc(k)+'</td><td class="num">'+v+'</td><td class="num">'+(rows.length>0?(v/rows.length*100).toFixed(1)+'%':'0%')+'</td></tr>');
+    h+='<tr class="total-row"><td>Total</td><td class="num">'+rows.length+'</td><td class="num">100%</td></tr></tbody></table>';
+    return h;
+  }
+  if(document.getElementById('ctTypeTable'))    document.getElementById('ctTypeTable').innerHTML    = mkBreak(r=>r.task_type, 'Task Type');
+  if(document.getElementById('ctStatusTable'))  document.getElementById('ctStatusTable').innerHTML  = mkBreak(r=>r.status,    'Status');
+  if(document.getElementById('ctAssignedTable'))document.getElementById('ctAssignedTable').innerHTML= mkBreak(r=>r.assigned, 'Assigned To', 12);
+  if(document.getElementById('ctAssocTable'))   document.getElementById('ctAssocTable').innerHTML   = mkBreak(r=>r.assoc,    'Entity');
+
+  // Monthly trend (last 6)
+  const months=[]; for(let i=5;i>=0;i--){const d=new Date(TODAY.getFullYear(),TODAY.getMonth()-i,1);months.push({label:d.toLocaleString('default',{month:'short',year:'2-digit'}),from:d,to:eom(d)});}
+  let h='<table class="trend-table"><thead><tr><th>Metric</th>';
+  months.forEach(m=>h+='<th>'+m.label+'</th>'); h+='</tr></thead><tbody>';
+  const metrics=[
+    {label:'New Tasks',       fn:(rs)=>rs.length},
+    {label:'Open',            fn:(rs)=>rs.filter(r=>(r.status||'').toLowerCase()==='open').length},
+    {label:'Completed',       fn:(rs)=>rs.filter(r=>{const s=(r.status||'').toLowerCase();return s==='completed'||s==='closed';}).length},
+  ];
+  metrics.forEach(m=>{
+    h+='<tr><td class="metric-name">'+m.label+'</td>';
+    months.forEach(mo=>{
+      const subset=CTROWS.filter(r=>{const d=ctParseAct(r.activity);return d&&d>=mo.from&&d<=mo.to;});
+      h+='<td class="num">'+m.fn(subset)+'</td>';
+    });
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  if(document.getElementById('ctTrendTable')) document.getElementById('ctTrendTable').innerHTML=h;
+
+  // Task list (with expand)
+  let ht='<div class="table-wrap"><table><thead><tr><th style="width:36px"></th>'
+        +'<th>Activity Date</th><th>Subject</th><th>Type</th><th>Status</th>'
+        +'<th>Assoc</th><th>Created By</th><th>Assigned To</th><th>Due</th><th>Reminder</th></tr></thead><tbody>';
+  const pg=rows.slice(0,300);
+  if(!pg.length) ht+='<tr><td colspan="10" class="no-data">No tasks match the selected filters.</td></tr>';
+  pg.forEach(r=>{
+    const isOpen=ctExpanded.has(r.id);
+    const arrow=isOpen?'&#9660;':'&#9658;';
+    const stLow=(r.status||'').toLowerCase();
+    const stColor = stLow==='open'?'#f59e0b':(stLow==='completed'||stLow==='closed'?'#10b981':'#6b7280');
+    const due=ctParseAct(r.due); const isOver=due&&due<today&&stLow==='open';
+    ht+='<tr style="cursor:pointer" onclick="ctToggle(\''+esc(r.id)+'\')">'
+      +'<td style="text-align:center;color:#1a6ec0;font-weight:700">'+arrow+'</td>'
+      +'<td style="white-space:nowrap;font-size:11px">'+esc(r.activity)+'</td>'
+      +'<td>'+esc(r.subject)+'</td>'
+      +'<td><span style="display:inline-block;padding:2px 8px;background:#eef3f9;color:#1a3a5c;border-radius:10px;font-size:11px;font-weight:600">'+esc(r.task_type)+'</span></td>'
+      +'<td><span style="display:inline-block;padding:2px 8px;background:'+stColor+';color:#fff;border-radius:10px;font-size:11px;font-weight:600">'+esc(r.status)+'</span></td>'
+      +'<td>'+esc(r.assoc)+'</td>'
+      +'<td>'+esc(r.created_by)+'</td>'
+      +'<td>'+esc(r.assigned)+'</td>'
+      +'<td style="white-space:nowrap;'+(isOver?'color:#dc2626;font-weight:600':'')+'">'+esc(r.due)+(isOver?' &#9888;':'')+'</td>'
+      +'<td style="white-space:nowrap;font-size:11px">'+esc(r.reminder)+'</td></tr>';
+    if(isOpen){
+      ht+='<tr><td colspan="10" style="padding:10px 14px;background:#f5f8fc;border-left:3px solid #1a6ec0">'
+        +'<div style="font-weight:600;color:#1a3a5c;margin-bottom:4px">Note:</div>'
+        +'<div style="white-space:pre-wrap;font-size:12.5px">'+esc(r.text)+'</div></td></tr>';
+    }
+  });
+  ht+='</tbody></table></div>';
+  if(rows.length>300) ht+='<div class="page-info" style="margin-top:6px">Showing 300 of '+rows.length+' tasks. Use filters to narrow.</div>';
+  if(document.getElementById('ctTableWrap')) document.getElementById('ctTableWrap').innerHTML=ht;
+}
+
+/* ═══════════════════════════════════════════════════════════════
    UTILIZATION REVIEW LOGIC
 ═══════════════════════════════════════════════════════════════ */
 const AROWS = JSON.parse(document.getElementById('authData').textContent);
@@ -2356,6 +2575,7 @@ function runDashboard(){
   renderMarketingDetail();
   renderOpportunities();
   renderReferrals();
+  renderCRMTask();
   renderURSpot();
   renderURTrend();
   renderClinicalSpot();
@@ -2661,6 +2881,27 @@ runDashboard();
       sortKey: xSortKey(r[idx('activity_date')]),
     }));
 
+    // CRM Task rows
+    const crm_task_rows = map('CRM Task', (r, idx) => {
+      const ad = r[idx('activity_date')];
+      return {
+        id:        xStr(r[idx('id')]),
+        aid:       xStr(r[idx('Associated_id')]) || xStr(r[idx('associated_with_id')]),
+        assoc:     xStr(r[idx('associated_with')]),
+        subject:   xStr(r[idx('task_subject')]),
+        type:      xStr(r[idx('type')]),
+        task_type: xStr(r[idx('task_type')]),
+        status:    xStr(r[idx('task_status')]),
+        created_by:xStr(r[idx('created_by_name')]),
+        assigned:  xStr(r[idx('assigned_to_name')]),
+        text:      xStr(r[idx('text')]),
+        activity:  xDateTime(ad),
+        due:       xDateTime(r[idx('task_due_date')]),
+        reminder:  xDateTime(r[idx('reminder_date_time')]),
+        sortKey:   xSortKey(ad),
+      };
+    });
+
     // Referral Active rows
     const referral_rows = map('Referral Active', (r, idx) => ({
       id:    xStr(r[idx('referral_id')]) || xStr(r[idx('id')]),
@@ -2673,7 +2914,7 @@ runDashboard();
       state: xStr(r[idx('referral source state')]),
     }));
 
-    return { raw_data, tab_config, billing_rows, census_rows, opp_rows, auth_rows, ops_rows, gn_rows, timeline_rows, referral_rows };
+    return { raw_data, tab_config, billing_rows, census_rows, opp_rows, auth_rows, ops_rows, gn_rows, timeline_rows, referral_rows, crm_task_rows };
   }
 
   function inject(id, obj){ document.getElementById(id).textContent = JSON.stringify(obj); }
@@ -2689,6 +2930,7 @@ runDashboard();
     inject('gnData',      t.gn_rows);
     inject('tlData',      t.timeline_rows);
     inject('refData',     t.referral_rows);
+    inject('crmTaskData', t.crm_task_rows);
   }
 
   function bootDashboard(){

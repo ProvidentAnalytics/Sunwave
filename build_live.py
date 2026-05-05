@@ -27,7 +27,7 @@ CSS = block('CSS')
 JS  = block('JS')
 SECTIONS = {n: block(n) for n in [
     'BILLING_SECTION','CENSUS_SECTION','MARKETING_SECTION','OPPORTUNITIES_SECTION',
-    'REFERRAL_SECTION','UR_SECTION','CLINICAL_SECTION','OPERATIONS_SECTION','FIELD_EXPLORER_SECTION',
+    'REFERRAL_SECTION','CRM_TASK_SECTION','UR_SECTION','CLINICAL_SECTION','OPERATIONS_SECTION','FIELD_EXPLORER_SECTION',
 ]}
 
 # ── Add CSS for login + loading splash ──────────────────────────────────────
@@ -347,6 +347,27 @@ LOADER_JS = """
       sortKey: xSortKey(r[idx('activity_date')]),
     }));
 
+    // CRM Task rows
+    const crm_task_rows = map('CRM Task', (r, idx) => {
+      const ad = r[idx('activity_date')];
+      return {
+        id:        xStr(r[idx('id')]),
+        aid:       xStr(r[idx('Associated_id')]) || xStr(r[idx('associated_with_id')]),
+        assoc:     xStr(r[idx('associated_with')]),
+        subject:   xStr(r[idx('task_subject')]),
+        type:      xStr(r[idx('type')]),
+        task_type: xStr(r[idx('task_type')]),
+        status:    xStr(r[idx('task_status')]),
+        created_by:xStr(r[idx('created_by_name')]),
+        assigned:  xStr(r[idx('assigned_to_name')]),
+        text:      xStr(r[idx('text')]),
+        activity:  xDateTime(ad),
+        due:       xDateTime(r[idx('task_due_date')]),
+        reminder:  xDateTime(r[idx('reminder_date_time')]),
+        sortKey:   xSortKey(ad),
+      };
+    });
+
     // Referral Active rows
     const referral_rows = map('Referral Active', (r, idx) => ({
       id:    xStr(r[idx('referral_id')]) || xStr(r[idx('id')]),
@@ -359,7 +380,7 @@ LOADER_JS = """
       state: xStr(r[idx('referral source state')]),
     }));
 
-    return { raw_data, tab_config, billing_rows, census_rows, opp_rows, auth_rows, ops_rows, gn_rows, timeline_rows, referral_rows };
+    return { raw_data, tab_config, billing_rows, census_rows, opp_rows, auth_rows, ops_rows, gn_rows, timeline_rows, referral_rows, crm_task_rows };
   }
 
   function inject(id, obj){ document.getElementById(id).textContent = JSON.stringify(obj); }
@@ -375,6 +396,7 @@ LOADER_JS = """
     inject('gnData',      t.gn_rows);
     inject('tlData',      t.timeline_rows);
     inject('refData',     t.referral_rows);
+    inject('crmTaskData', t.crm_task_rows);
   }
 
   function bootDashboard(){
@@ -533,6 +555,7 @@ html = (
 + SECTIONS['MARKETING_SECTION']
 + SECTIONS['OPPORTUNITIES_SECTION']
 + SECTIONS.get('REFERRAL_SECTION', '')
++ SECTIONS.get('CRM_TASK_SECTION', '')
 + SECTIONS['UR_SECTION']
 + SECTIONS['CLINICAL_SECTION']
 + SECTIONS['OPERATIONS_SECTION']
@@ -557,6 +580,7 @@ html = (
 '<script type="application/json" id="gnData">[]</script>\n'
 '<script type="application/json" id="tlData">[]</script>\n'
 '<script type="application/json" id="refData">[]</script>\n'
+'<script type="application/json" id="crmTaskData">[]</script>\n'
 
 # MSAL.js library (v3 - requires initialize()). Multiple CDNs as fallback.
 '<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"></script>\n'
