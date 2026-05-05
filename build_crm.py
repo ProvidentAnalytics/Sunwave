@@ -20,6 +20,14 @@ from datetime import datetime, timezone
 with open('report_data.json', 'r', encoding='utf-8') as f:
     raw = json.load(f)
 
+# Diagnostic: list all sheet keys and row counts
+print('[CRM] report_data.json sheet inventory:')
+for k in sorted(raw.keys()):
+    rows = raw[k].get('rows') or []
+    cols = raw[k].get('columns') or []
+    print(f'  - {k!r:48s} rows={len(rows):4d}  cols={len(cols)}')
+print()
+
 
 def sheet_to_dicts(name):
     """Convert a sheet from report_data.json into a list of dicts."""
