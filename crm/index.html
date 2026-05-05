@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
+<title>Sunwave CRM &mdash; Provident Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#0a3d5c; --teal:#3dffc0; --teal-dim:rgba(61,255,192,0.12);
+  --bg:#f4f6f9; --white:#fff; --border:#e1e7ef;
+  --text:#0f1923; --muted:#6b7e96;
+  --red:#ef4444; --amber:#f59e0b; --blue:#3b82f6; --green:#10b981; --purple:#8b5cf6;
+  --shadow:0 1px 3px rgba(10,61,92,.07),0 4px 14px rgba(10,61,92,.04);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh}
+/* Topbar */
+.topbar{background:var(--navy);height:58px;padding:0 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 2px 16px rgba(10,61,92,.25)}
+.tb-left{display:flex;align-items:center;gap:14px}
+.tb-pill{background:var(--teal);color:var(--navy);font-family:'Space Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.08em;padding:5px 10px;border-radius:4px}
+.tb-title{color:#fff;font-size:15px;font-weight:600;line-height:1.2}
+.tb-sub{color:rgba(255,255,255,.4);font-size:11px;font-family:'Space Mono',monospace}
+.tb-right{display:flex;align-items:center;gap:12px}
+.live-pill{display:flex;align-items:center;gap:6px;background:rgba(61,255,192,.1);border:1px solid rgba(61,255,192,.25);border-radius:20px;padding:5px 12px;font-family:'Space Mono',monospace;font-size:10px;color:var(--teal)}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.sync-lbl{font-family:'Space Mono',monospace;font-size:10px;color:rgba(255,255,255,.45)}
+/* Tab nav */
+.tab-nav{background:var(--white);border-bottom:1px solid var(--border);padding:0 28px;display:flex;flex-wrap:wrap;position:sticky;top:58px;z-index:190;box-shadow:0 2px 8px rgba(10,61,92,.05);overflow-x:auto}
+.tnav{padding:12px 14px;border:none;border-bottom:3px solid transparent;background:none;font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:500;color:var(--muted);cursor:pointer;white-space:nowrap;transition:all .2s;margin-bottom:-1px}
+.tnav:hover{color:var(--navy)}
+.tnav.active{color:var(--navy);border-bottom-color:var(--teal);font-weight:700}
+/* Filters bar */
+.filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:14px 28px;background:var(--white);border-bottom:1px solid var(--border);position:sticky;top:104px;z-index:180}
+.filt-grp{display:flex;align-items:center;gap:6px;padding:0 12px;border-right:1px solid var(--border)}
+.filt-grp:last-child{border-right:none}
+.filt-lbl{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.filt-btn{padding:6px 11px;border:1px solid var(--border);background:#fff;border-radius:5px;font-family:'Space Mono',monospace;font-size:10px;font-weight:700;color:var(--muted);cursor:pointer;letter-spacing:.04em;transition:all .15s}
+.filt-btn:hover{background:rgba(10,61,92,.07);color:var(--navy)}
+.filt-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.filt-sel{padding:6px 10px;border:1px solid var(--border);background:#fff;border-radius:5px;font-family:'Space Mono',monospace;font-size:11px;color:var(--navy);outline:none}
+.filt-sel:focus{border-color:var(--navy)}
+.filt-sel[multiple]{min-height:32px;max-height:32px;overflow-y:auto}
+.filt-sel[multiple]:focus{max-height:200px}
+/* Tab panels */
+.tab-panel{display:none;padding:22px 28px}.tab-panel.active{display:block}
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:18px}
+.kpi{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--navy);border-radius:12px 12px 0 0}
+.kpi.teal::before{background:var(--teal)}.kpi.red::before{background:var(--red)}.kpi.amber::before{background:var(--amber)}.kpi.green::before{background:var(--green)}.kpi.blue::before{background:var(--blue)}.kpi.purple::before{background:var(--purple)}
+.kpi-lbl{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+.kpi-val{font-size:28px;font-weight:700;color:var(--navy);line-height:1;letter-spacing:-.03em}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:5px}
+/* Card */
+.card{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow);margin-bottom:14px}
+.card-h{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:12px}
+.card-title{font-size:13px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.04em}
+.card-sub{font-size:11px;color:var(--muted);margin-top:3px;font-weight:400}
+.card-actions{display:flex;gap:6px}
+/* Tables */
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl th{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:0 12px 9px 0;text-align:left;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff;cursor:pointer;user-select:none;white-space:nowrap;font-weight:700}
+.tbl th.sort-asc::after{content:' \25B2';color:var(--navy)}
+.tbl th.sort-desc::after{content:' \25BC';color:var(--navy)}
+.tbl td{padding:8px 12px 8px 0;border-bottom:1px solid rgba(225,231,239,.5);vertical-align:middle}
+.tbl tr:hover td{background:rgba(244,246,249,.8)}
+.tbl-wrap{overflow-x:auto;max-height:560px;overflow-y:auto}
+.tbl-wrap::-webkit-scrollbar{width:5px;height:5px}
+.tbl-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+/* Layout grids */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.g3{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:980px){.g2,.g3{grid-template-columns:1fr}}
+/* Badges */
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;font-family:'Space Mono',monospace}
+.b-amber{background:rgba(245,158,11,.15);color:var(--amber)}
+.b-red{background:rgba(239,68,68,.15);color:var(--red)}
+.b-green{background:rgba(16,185,129,.15);color:var(--green)}
+.b-blue{background:rgba(59,130,246,.15);color:var(--blue)}
+.b-muted{background:rgba(107,126,150,.15);color:var(--muted)}
+.b-purple{background:rgba(139,92,246,.15);color:var(--purple)}
+.b-teal{background:var(--teal-dim);color:var(--navy)}
+.rank-medal{font-size:14px;margin-right:4px}
+.num{text-align:right;font-variant-numeric:tabular-nums;font-family:'Space Mono',monospace}
+/* Search input */
+.tbl-search{flex:1;min-width:180px;background:var(--white);border:1px solid var(--border);border-radius:8px;padding:8px 13px;font-size:12px;color:var(--text);outline:none;font-family:'DM Sans',sans-serif}
+.tbl-search:focus{border-color:var(--navy)}
+.tbl-filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+/* Mini bar inline */
+.mbar{display:inline-block;height:8px;background:var(--bg);border-radius:4px;overflow:hidden;width:80px;vertical-align:middle;margin-right:6px}
+.mbar-fill{height:100%;background:var(--navy);border-radius:4px}
+/* Timeline expand row */
+.tl-detail{padding:14px 20px;background:#f8fafc;border-left:3px solid var(--navy);border-radius:0 6px 6px 0;margin:6px 0}
+.tl-event{padding:8px 0;border-bottom:1px dashed var(--border);font-size:12px}
+.tl-event:last-child{border-bottom:none}
+.tl-date{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);margin-right:10px}
+.tl-type{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:700;background:var(--teal-dim);color:var(--navy);margin-right:8px;font-family:'Space Mono',monospace}
+.tl-by{font-weight:600;color:var(--navy)}
+/* Heatmap */
+.hm{display:grid;grid-template-columns:60px repeat(7,1fr);gap:2px}
+.hm-lbl{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);text-align:right;padding-right:4px;display:flex;align-items:center;justify-content:flex-end}
+.hm-cell{height:18px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text);font-family:'Space Mono',monospace}
+/* Empty state */
+.empty{padding:40px 20px;text-align:center;color:var(--muted);font-size:13px;font-style:italic}
+/* Chart container */
+.chart-wrap{height:280px;position:relative}
+.chart-wrap-tall{height:360px;position:relative}
+/* Footer note */
+.footer{padding:18px 28px;color:var(--muted);font-size:11px;font-family:'Space Mono',monospace;text-align:center}
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+  <div class="tb-left">
+    <span class="tb-pill">SUNWAVE CRM</span>
+    <div>
+      <div class="tb-title">CRM &amp; Productivity</div>
+      <div class="tb-sub" id="syncLbl">loading...</div>
+    </div>
+  </div>
+  <div class="tb-right">
+    <span class="live-pill"><span class="live-dot"></span><span>LIVE</span></span>
+  </div>
+</div>
+
+<!-- Tab nav -->
+<nav class="tab-nav" id="tabs">
+  <button class="tnav active" data-tab="overview">Overview</button>
+  <button class="tnav" data-tab="pipeline">Pipeline &amp; Funnel</button>
+  <button class="tnav" data-tab="productivity">User Productivity</button>
+  <button class="tnav" data-tab="effectiveness">User Effectiveness</button>
+  <button class="tnav" data-tab="flow">Opportunity Flow</button>
+  <button class="tnav" data-tab="trends">Activity Trends</button>
+</nav>
+
+<!-- Filters -->
+<div class="filters">
+  <div class="filt-grp">
+    <span class="filt-lbl">Period</span>
+    <button class="filt-btn" data-period="7D">7D</button>
+    <button class="filt-btn active" data-period="30D">30D</button>
+    <button class="filt-btn" data-period="90D">90D</button>
+    <button class="filt-btn" data-period="YTD">YTD</button>
+    <button class="filt-btn" data-period="ALL">ALL</button>
+  </div>
+  <div class="filt-grp">
+    <span class="filt-lbl">Outcome</span>
+    <select class="filt-sel" id="outcomeSel">
+      <option value="">All</option>
+      <option>Active</option>
+      <option>Scheduled</option>
+      <option>Admitted</option>
+      <option>AdmittedLegacy</option>
+      <option>Lost</option>
+      <option>Abandoned</option>
+    </select>
+  </div>
+  <div class="filt-grp">
+    <span class="filt-lbl">User</span>
+    <select class="filt-sel" id="userSel" multiple style="min-width:170px"></select>
+  </div>
+  <div class="filt-grp">
+    <span class="filt-lbl">View</span>
+    <button class="filt-btn active" data-view="human">Human Only</button>
+    <button class="filt-btn" data-view="all">+ Workflow</button>
+  </div>
+</div>
+
+<!-- Tab panels -->
+<div id="tab-overview"      class="tab-panel active"></div>
+<div id="tab-pipeline"      class="tab-panel"></div>
+<div id="tab-productivity"  class="tab-panel"></div>
+<div id="tab-effectiveness" class="tab-panel"></div>
+<div id="tab-flow"          class="tab-panel"></div>
+<div id="tab-trends"        class="tab-panel"></div>
+
+<div class="footer" id="footer"></div>
+
+<script>
+// ── DATA — replaced by build_crm.py ────────────────────────────────────────
+var OPPS  = [{"id":"1061596","name":"JulianTest TestUser","co":"2026-01-23T00:00:00","admit":"","outcome":"Abandoned","stage":"Scheduled","loc":"","ins":"","ref":"","lost_r":"","aband_r":"No Coverage","rep":"Unassigned","created_by":"vmuchnik@providenthcm.com"},{"id":"999311","name":"Bob Doe","co":"2025-10-29T00:00:00","admit":"","outcome":"Abandoned","stage":"VOB: Needs Review","loc":"","ins":"","ref":"","lost_r":"","aband_r":"No Coverage","rep":"Cassie Bisig","created_by":"cbisig@striverecovery.com"},{"id":"999564","name":"geragrea gfeagre","co":"2025-10-29T00:00:00","admit":"","outcome":"Abandoned","stage":"VOB: On Queue","loc":"","ins":"","ref":"","lost_r":"","aband_r":"No Coverage","rep":"Cassie Bisig","created_by":"cbisig@striverecovery.com"},{"id":"1009337","name":"Dusten Sauer","co":"2025-11-11T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"ANTHEM BCBS IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"No Coverage","rep":"Unassigned","created_by":"ddawkins@striverecovery.com"},{"id":"1010665","name":"Dan Tester","co":"2025-11-13T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Ambetter of Indiana INS","ref":"Parkview Behavioral Health Institiute","lost_r":"","aband_r":"No Funding Available","rep":"Unassigned","created_by":"jbrokaw@striverecovery.com"},{"id":"1014448","name":"Ronald Hill","co":"2025-11-18T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"ANTHEM BCBS IN MCD","ref":"Northern Path Recovery","lost_r":"","aband_r":"Clinically Denied","rep":"Unassigned","created_by":"vmansfield@striverecovery.com"},{"id":"1016958","name":"Tyler Hartman","co":"2025-11-21T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"BCBS - OH,IN,KY (Anthem Central Region)","ref":"Northern Path Recovery","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1016988","name":"Christina Edgell","co":"2025-11-21T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1017204","name":"Marty Shearer","co":"2025-11-21T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Northern Path Recovery","lost_r":"","aband_r":"Medically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1017724","name":"James O'Bryan","co":"2025-11-22T00:00:00","admit":"","outcome":"Abandoned","stage":"VOB: Refer Out","loc":"","ins":"Medicare","ref":"Strive Recovery","lost_r":"","aband_r":"No Funding Available","rep":"Natalie Williams","created_by":"nwilliams@striverecovery.com"},{"id":"1018681","name":"Jonathan Thomas","co":"2025-11-24T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicare","ref":"Lutheran Hospital Downtown","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1024833","name":"Chris Devore","co":"2025-12-03T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"DNU CARESOURCE IN MCD","ref":"Rise Recovery","lost_r":"","aband_r":"Clinically Denied","rep":"Victoria Mansfield","created_by":"vmansfield@striverecovery.com"},{"id":"1026003","name":"Terry Rainey","co":"2025-12-05T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"DNU McClaren MD WISE HIP","ref":"Positive Resource Connecton","lost_r":"","aband_r":"Medically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1026069","name":"Terry Rainey","co":"2025-12-05T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"","ref":"Positive Resource Connecton","lost_r":"","aband_r":"Medically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1027182","name":"Stephen Farriester","co":"2025-12-07T00:00:00","admit":"","outcome":"Abandoned","stage":"VOB: Refer Out","loc":"","ins":"HEALTHY INDIANA PLAN","ref":"Lutheran Hospital Downtown","lost_r":"","aband_r":"No Coverage","rep":"Heath Terhune","created_by":"hterhune@striverecovery.com"},{"id":"1027987","name":"David Deblaere","co":"2025-12-08T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"DNU  McLaren MdWise Hoosier","ref":"Parkview Behavioral Health Institiute","lost_r":"","aband_r":"Medically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1028606","name":"Ralph Horne","co":"2025-12-09T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"BCBS - INDIANA INS","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"No Coverage","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1028846","name":"Mallory Lael","co":"2025-12-09T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"MEDICAID INDIANA","ref":"Strive Recovery","lost_r":"","aband_r":"No Coverage","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1034520","name":"Charles Shepherd","co":"2025-12-17T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Allendale Treatment","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1035638","name":"Anjellise Summers","co":"2025-12-18T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues-Indy","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1036338","name":"Gerald Perkins","co":"2025-12-19T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Strive Recovery","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1044375","name":"Richard Posley","co":"2026-01-02T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"ANTHEM BCBS IN MCD","ref":"Avenues-Indy","lost_r":"","aband_r":"No Coverage","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1044399","name":"Robert Cotton","co":"2026-01-02T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1044432","name":"Breanna Brickley","co":"2026-01-02T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Avenues-Indy","lost_r":"","aband_r":"No Coverage","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1045285","name":"Shari Williams","co":"2026-01-04T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Humana MCD","ref":"Parkview Randallia","lost_r":"","aband_r":"Medically Denied","rep":"Rosemary Smith","created_by":"Rsmith@striverecovery.com"},{"id":"1048095","name":"Ian Nuechterlein","co":"2026-01-07T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"No Coverage","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1048578","name":"Shari Williams","co":"2026-01-07T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Humana MCD","ref":"Celebrate Senior Living","lost_r":"","aband_r":"Medically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1049082","name":"Jane Doe","co":"2026-01-08T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"MEDICAID INDIANA","ref":"Internet","lost_r":"","aband_r":"No Funding Available","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1049173","name":"Adairian Johnson","co":"2026-01-08T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"BCBS - INDIANA INS","ref":"The Grove Estate","lost_r":"","aband_r":"No Coverage","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1050960","name":"Bob Doe","co":"2026-01-10T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Lutheran Hospital Downtown","lost_r":"","aband_r":"No Funding Available","rep":"Unassigned","created_by":"nwilliams@striverecovery.com"},{"id":"1052016","name":"Matthew Plummer","co":"2026-01-12T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues-Indy","lost_r":"","aband_r":"No Coverage","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1057709","name":"Jessica Floyd","co":"2026-01-19T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"ANTHEM BCBS IN MCD","ref":"Strive Recovery","lost_r":"","aband_r":"Medically Denied","rep":"Unassigned","created_by":"nwilliams@striverecovery.com"},{"id":"1059430","name":"Alejandro Alvarez-Guzman","co":"2026-01-21T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Rise Recovery","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1060681","name":"Travis Carter","co":"2026-01-22T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Spark Recovery","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1061828","name":"Daniel Good","co":"2026-01-23T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1064040","name":"Kelsey Brooks","co":"2026-01-27T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues- South Bend","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1065109","name":"James Taylor","co":"2026-01-28T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues-Indy","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1065259","name":"Jason Hager","co":"2026-01-28T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"Clinically Denied","rep":"Kevin Lubovich","created_by":"klubovich@striverecovery.com"},{"id":"1065984","name":"Amanda Nesbitt","co":"2026-01-29T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"Medically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1068436","name":"Storm Spencer","co":"2026-02-02T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Strive Recovery","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1068514","name":"Ray Beets","co":"2026-02-02T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"HEALTHY INDIANA PLAN","ref":"Avenues-Indy","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1068643","name":"Dalton Snyder","co":"2026-02-02T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Strive Recovery","lost_r":"","aband_r":"No Coverage","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1069847","name":"Matias Esquivel","co":"2026-02-03T00:00:00","admit":"","outcome":"Abandoned","stage":"VOB: In Progress","loc":"","ins":"Ambetter of Indiana INS","ref":"Parkview Behavioral Health Institiute","lost_r":"","aband_r":"No Coverage","rep":"Kevin Lubovich","created_by":"klubovich@striverecovery.com"},{"id":"1070075","name":"Jonathan Ray","co":"2026-02-04T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Hickory Treatment Center-Albion","lost_r":"","aband_r":"No Coverage","rep":"Jafus Woods","created_by":"jwoods@striverecovery.com"},{"id":"1071565","name":"Jamie Wolf","co":"2026-02-05T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"MEDICAID INDIANA","ref":"Parkview Randallia","lost_r":"","aband_r":"No Coverage","rep":"Kevin Lubovich","created_by":"klubovich@striverecovery.com"},{"id":"1075026","name":"Dana Garza","co":"2026-02-10T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1075440","name":"Brandee Carbo","co":"2026-02-10T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"HEALTHY INDIANA PLAN","ref":"Hickory Treatment Center-Albion","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1077058","name":"Thomas Cover","co":"2026-02-12T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Indiana Managed Health Services","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1077304","name":"Michael Wenzel","co":"2026-02-12T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"MEDICAID INDIANA","ref":"Strive Recovery","lost_r":"","aband_r":"No Coverage","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1077851","name":"Stanley Eaton","co":"2026-02-13T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Indiana Managed Health Services","ref":"Park Center-Parkview- Peer Recovery","lost_r":"","aband_r":"Clinically Denied","rep":"Unassigned","created_by":"nwilliams@striverecovery.com"},{"id":"1080836","name":"Brandon Jones","co":"2026-02-17T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1081447","name":"Phil Christman","co":"2026-02-18T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Indiana Managed Health Services","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"Medically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1082960","name":"Isaiah Bohde","co":"2026-02-19T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"No Coverage","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1087160","name":"Thomas Johnson","co":"2026-02-25T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Humana MCD","ref":"Bridges of Hope","lost_r":"","aband_r":"No Coverage","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1087288","name":"Benard Weaver","co":"2026-02-25T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Bowen Health","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1090376","name":"Jacob Owen","co":"2026-03-02T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"No Coverage","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1090394","name":"Dylan Gilbert","co":"2026-03-02T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Indiana Managed Health Services","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"No Coverage","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1090542","name":"Aaron Crosley","co":"2026-03-02T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Self-Pay","ref":"Northern Path Recovery","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1092559","name":"Shawna Dunlap","co":"2026-03-04T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1092589","name":"Christian Macon","co":"2026-03-04T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Indiana Managed Health Services","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1092699","name":"Brittney TEST","co":"2026-03-04T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"State of IN Dept of Correction-Parole","lost_r":"","aband_r":"No Coverage","rep":"Unassigned","created_by":"bcollins@striverecovery.com"},{"id":"1096113","name":"Donnie Wilson","co":"2026-03-09T00:00:00","admit":"","outcome":"Abandoned","stage":"Pre-Screen: In Progress","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues-Indy","lost_r":"","aband_r":"No Coverage","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1096145","name":"Aaron Alexander","co":"2026-03-09T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1097367","name":"Brian Lortie","co":"2026-03-10T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Indiana Managed Health Services","ref":"Internet","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1098092","name":"Bhc Valle Vista Bhc Valle Vista","co":"2026-03-11T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"","ref":"","lost_r":"","aband_r":"No Coverage","rep":"Unassigned","created_by":"vmuchnik@providenthcm.com"},{"id":"1098123","name":"Fort Wayne   In Fort Wayne   In","co":"2026-03-11T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"","ref":"","lost_r":"","aband_r":"No Coverage","rep":"Unassigned","created_by":"vmuchnik@providenthcm.com"},{"id":"1098149","name":"Fort Wayne   In Fort Wayne   In","co":"2026-03-11T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"","ref":"","lost_r":"","aband_r":"No Coverage","rep":"Unassigned","created_by":"vmuchnik@providenthcm.com"},{"id":"1099018","name":"Adam TURRIN","co":"2026-03-12T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"UNITED HEALTHCARE MCD","ref":"Park Center-Parkview- Peer Recovery","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1099120","name":"George Clooney","co":"2026-03-12T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Google/Seo","lost_r":"","aband_r":"No Coverage","rep":"Unassigned","created_by":"vmuchnik@providenthcm.com"},{"id":"1101679","name":"Fort Wayne   In Fort Wayne   In","co":"2026-03-16T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"","ref":"","lost_r":"","aband_r":"No Coverage","rep":"Unassigned","created_by":"vmuchnik@providenthcm.com"},{"id":"1101725","name":"Jeffery Martin","co":"2026-03-16T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Self-Pay","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"No Coverage","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1102430","name":"Shaughn Stockert","co":"2026-03-17T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"BCBS - INDIANA INS","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1102565","name":"Brittany test","co":"2026-03-17T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"","ref":"Internet","lost_r":"","aband_r":"No Coverage","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1109407","name":"Test1 Test","co":"2026-03-25T00:00:00","admit":"","outcome":"Abandoned","stage":"VOB: In Progress","loc":"","ins":"UNITED HEALTHCARE MCD","ref":"Strive Recovery","lost_r":"","aband_r":"No Coverage","rep":"Unassigned","created_by":"bcollins@striverecovery.com"},{"id":"1110362","name":"Jonathan Crouch","co":"2026-03-26T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1110408","name":"Larry Taylor","co":"2026-03-26T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"MEDICAID INDIANA","ref":"Lutheran Hospital Downtown","lost_r":"","aband_r":"No Coverage","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1110596","name":"test dummy","co":"2026-03-27T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"UNITED HEALTHCARE MCD","ref":"Maple Heights Behavorial Health","lost_r":"","aband_r":"No Coverage","rep":"Laura Dombroff","created_by":"ldombroff@striverecovery.com"},{"id":"1110895","name":"Test Test","co":"2026-03-27T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Internet","lost_r":"","aband_r":"No Coverage","rep":"Unassigned","created_by":"vmuchnik@providenthcm.com"},{"id":"1111750","name":"Tim Bassett","co":"2026-03-29T00:00:00","admit":"","outcome":"Abandoned","stage":"VOB: Refer Out","loc":"","ins":"Aetna INS","ref":"Recovery Cafe-Sober Living","lost_r":"","aband_r":"No Coverage","rep":"Matt Archer","created_by":"marcher@striverecovery.com"},{"id":"1116241","name":"James Walsh","co":"2026-04-02T00:00:00","admit":"","outcome":"Abandoned","stage":"VOB: On Queue","loc":"","ins":"ANTHEM BCBS IN MCD","ref":"State of Indiana Department of Correction-Probation","lost_r":"","aband_r":"No Coverage","rep":"Mary Louisse Cordero","created_by":"mcordero@providenthcc.com"},{"id":"1116360","name":"Nicole McComb","co":"2026-04-02T00:00:00","admit":"","outcome":"Abandoned","stage":"Pre-Screen: Refer Out","loc":"","ins":"Medicaid Anthem HIP","ref":"Strive Employee","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1116810","name":"James Vaughn","co":"2026-04-02T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Strive Employee","lost_r":"","aband_r":"No Coverage","rep":"Gabrielle Joyce","created_by":"gjoyce@striverecovery.com"},{"id":"1119449","name":"Charles Dove","co":"2026-04-07T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Indiana Managed Health Services","ref":"Lutheran Hospital","lost_r":"","aband_r":"No Coverage","rep":"Gabrielle Joyce","created_by":"gjoyce@striverecovery.com"},{"id":"1121592","name":"Eric Rysman","co":"2026-04-09T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Indiana Managed Health Services","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"No Coverage","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1121616","name":"Derek Clanton","co":"2026-04-09T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Indiana Managed Health Services","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"No Coverage","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1121653","name":"Kelsey Mitcham","co":"2026-04-09T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Indiana Managed Health Services","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1125152","name":"Amanda Hammel","co":"2026-04-14T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Hickory Treatment Center-Albion","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1127038","name":"Austin Bowman","co":"2026-04-16T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"ANTHEM BCBS IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1127052","name":"Charles Clinton","co":"2026-04-16T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"Clinically Denied","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1129985","name":"Gregory Foster","co":"2026-04-20T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"UNITED HEALTHCARE MCD","ref":"Parkview Randallia","lost_r":"","aband_r":"No Coverage","rep":"Gabrielle Joyce","created_by":"gjoyce@striverecovery.com"},{"id":"1142194","name":"Dawn Sweet","co":"2026-04-22T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"MEDICAID INDIANA","ref":"State of Indiana Department of Correction-Probation","lost_r":"","aband_r":"No Coverage","rep":"Gabrielle Joyce","created_by":"gjoyce@striverecovery.com"},{"id":"1061542","name":"JulianTest TestUser","co":"2026-01-23T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"","ref":"","lost_r":"","aband_r":"No Coverage","rep":"Unassigned","created_by":"vmuchnik@providenthcm.com"},{"id":"1085148","name":"Joseph Heintzelman","co":"2026-02-23T00:00:00","admit":"","outcome":"Abandoned","stage":"VOB: Refer Out","loc":"","ins":"Indiana Managed Health Services","ref":"Allen Circuit Court","lost_r":"","aband_r":"No Coverage","rep":"Unassigned","created_by":"bcollins@striverecovery.com"},{"id":"1098415","name":"Shelby Blackburn","co":"2026-03-11T00:00:00","admit":"","outcome":"Abandoned","stage":"Pre-Screen: Refer Out","loc":"","ins":"Medicaid Anthem HIP","ref":"Community Medical Services","lost_r":"","aband_r":"Clinically Denied","rep":"Unassigned","created_by":"vmansfield@striverecovery.com"},{"id":"1130034","name":"LaQueeta Tyler","co":"2026-04-20T00:00:00","admit":"","outcome":"Abandoned","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Hickory Treatment Center-Albion","lost_r":"","aband_r":"Clinically Denied","rep":"Gabrielle Joyce","created_by":"gjoyce@striverecovery.com"},{"id":"1005270","name":"Mark Scarborough","co":"2025-11-06T00:00:00","admit":"","outcome":"Abandoned","stage":"VOB: On Queue","loc":"","ins":"ANTHEM BCBS IN MCD","ref":"","lost_r":"","aband_r":"Medically Denied","rep":"Unassigned","created_by":"cbisig@striverecovery.com"},{"id":"1142236","name":"Tad Furlow","co":"2026-04-22T00:00:00","admit":"","outcome":"Active","stage":"Entered","loc":"","ins":"Self-Pay","ref":"Strive Recovery","lost_r":"","aband_r":"","rep":"Mary Louisse Cordero","created_by":"mcordero@providenthcc.com"},{"id":"1143177","name":"Stephan Buchan","co":"2026-04-23T00:00:00","admit":"","outcome":"Active","stage":"Entered","loc":"","ins":"Self-Pay","ref":"Parkview Randallia","lost_r":"","aband_r":"","rep":"Gabrielle Joyce","created_by":"gjoyce@striverecovery.com"},{"id":"1143836","name":"Wesley Smith","co":"2026-04-23T00:00:00","admit":"","outcome":"Active","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Parkview Randallia","lost_r":"","aband_r":"","rep":"Gabrielle Joyce","created_by":"gjoyce@striverecovery.com"},{"id":"1143480","name":"Rasheedah Cunningham","co":"2026-04-23T00:00:00","admit":"","outcome":"Active","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Parkview Randallia","lost_r":"","aband_r":"","rep":"Gabrielle Joyce","created_by":"gjoyce@striverecovery.com"},{"id":"1091587","name":"Ashley Adcox","co":"2026-03-03T00:00:00","admit":"","outcome":"AdmittedLegacy","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Strive Recovery","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1094420","name":"James Treckman","co":"2026-03-06T00:00:00","admit":"","outcome":"AdmittedLegacy","stage":"Priority: Standard","loc":"","ins":"Medicaid Anthem HIP","ref":"Park Center-Parkview- Peer Recovery","lost_r":"","aband_r":"","rep":"Celia Patrick","created_by":"cpatrick@striverecovery.com"},{"id":"1109519","name":"Tyler UNKNOWN","co":"2026-03-25T00:00:00","admit":"","outcome":"AdmittedLegacy","stage":"Entered","loc":"","ins":"","ref":"Strive Recovery","lost_r":"","aband_r":"","rep":"Unassigned","created_by":"bcollins@striverecovery.com"},{"id":"991680","name":"Jason Test","co":"2025-10-20T00:00:00","admit":"","outcome":"Lost","stage":"VOB: Needs Review","loc":"","ins":"","ref":"","lost_r":"Cannot be Reached","aband_r":"","rep":"Unassigned","created_by":"jacob.machinia@sunwavehealth.com"},{"id":"995327","name":"Nat Test","co":"2025-10-23T00:00:00","admit":"","outcome":"Lost","stage":"Pre-Screen: Needs Review","loc":"","ins":"","ref":"","lost_r":"Cannot be Reached","aband_r":"","rep":"Unassigned","created_by":"nwilliams@striverecovery.com"},{"id":"999306","name":"Bob Doe","co":"2025-10-29T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"","ref":"","lost_r":"Cannot be Reached","aband_r":"","rep":"Victoria Mansfield","created_by":"vmansfield@striverecovery.com"},{"id":"1000105","name":"Test Test6","co":"2025-10-30T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"","ref":"","lost_r":"Cannot be Reached","aband_r":"","rep":"Unassigned","created_by":"jacob.machinia@sunwavehealth.com"},{"id":"1003169","name":"Mary Lady","co":"2025-11-03T00:00:00","admit":"","outcome":"Lost","stage":"Pre-Screen: In Progress","loc":"","ins":"","ref":"","lost_r":"Cannot be Reached","aband_r":"","rep":"Natalie Williams","created_by":"nwilliams@striverecovery.com"},{"id":"1005465","name":"Joy Miller","co":"2025-11-06T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"ANTHEM BCBS IN MCD","ref":"","lost_r":"Will not Commit","aband_r":"","rep":"Unassigned","created_by":"vmansfield@striverecovery.com"},{"id":"1006531","name":"Test Mike Test Tyson","co":"2025-11-07T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"","ref":"","lost_r":"Cannot be Reached","aband_r":"","rep":"Unassigned","created_by":"vmuchnik@providenthcm.com"},{"id":"1006735","name":"dusty Dawkins","co":"2025-11-07T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"MHS Ambetter Medicaid","ref":"","lost_r":"Cannot be Reached","aband_r":"","rep":"Unassigned","created_by":"cbisig@striverecovery.com"},{"id":"1006847","name":"Janey Doe","co":"2025-11-07T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"CARESOURCE OF OHIO","ref":"","lost_r":"Will not Commit","aband_r":"","rep":"Unassigned","created_by":"mmalone@striverecovery.com"},{"id":"1008872","name":"Jarrod Peters","co":"2025-11-11T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"","ref":"Lite Recovery","lost_r":"Will not Commit","aband_r":"","rep":"Unassigned","created_by":"vmansfield@striverecovery.com"},{"id":"1008921","name":"Jared Peters","co":"2025-11-11T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"ANTHEM BCBS IN MCD","ref":"Lite Recovery","lost_r":"Will not Commit","aband_r":"","rep":"Unassigned","created_by":"cbisig@striverecovery.com"},{"id":"1009694","name":"Wyatt Mchugh","co":"2025-11-12T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"","ref":"Northern Path Recovery","lost_r":"Will not Travel","aband_r":"","rep":"Dusty Dawkins","created_by":"ddawkins@striverecovery.com"},{"id":"1009793","name":"Corall Laster","co":"2025-11-12T00:00:00","admit":"","outcome":"Lost","stage":"VOB: On Queue","loc":"","ins":"HEALTHY INDIANA PLAN","ref":"Parkview Randallia","lost_r":"Cannot be Reached","aband_r":"","rep":"Victoria Mansfield","created_by":"vmansfield@striverecovery.com"},{"id":"1010440","name":"Jane Doe","co":"2025-11-12T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"United Healthcare","ref":"Lutheran Hospital Downtown","lost_r":"Will not Commit","aband_r":"","rep":"Unassigned","created_by":"nwilliams@striverecovery.com"},{"id":"1012784","name":"Ochimyam Erdenechimeg","co":"2025-11-16T00:00:00","admit":"","outcome":"Lost","stage":"VOB: On Queue","loc":"","ins":"HEALTHY INDIANA PLAN","ref":"Bowen Health Psychiatric Hospital","lost_r":"Will not Commit","aband_r":"","rep":"Heath Terhune","created_by":"hterhune@striverecovery.com"},{"id":"1013362","name":"Brandon Gorth","co":"2025-11-17T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"BCBS - OH,IN,KY (Anthem Central Region)","ref":"Avenues- Fort Wayne","lost_r":"Cannot be Reached","aband_r":"","rep":"Unassigned","created_by":"vmansfield@striverecovery.com"},{"id":"1015971","name":"Erika Garrett","co":"2025-11-20T00:00:00","admit":"","outcome":"Lost","stage":"VOB: On Queue","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1017144","name":"Frank Morgan","co":"2025-11-21T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"MHS Ambetter Medicaid","ref":"Celebrate Senior Living","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1025171","name":"Zephania Makori","co":"2025-12-04T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"United Healthcare","ref":"Strive Employee","lost_r":"Cannot be Reached","aband_r":"","rep":"Victoria Mansfield","created_by":"vmansfield@striverecovery.com"},{"id":"1028926","name":"Adairian Johnson","co":"2025-12-09T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"BCBS - MI","ref":"Strive Employee","lost_r":"Will not Travel","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1029391","name":"Gabriel Santana","co":"2025-12-10T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"MEDICAID INDIANA","ref":"Bowen Health Psychiatric Hospital","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1029558","name":"Bob Does","co":"2025-12-10T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Rise Recovery","lost_r":"Will not Commit","aband_r":"","rep":"Unassigned","created_by":"nwilliams@striverecovery.com"},{"id":"1034960","name":"Alexis Perkins","co":"2025-12-17T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"MHS Ambetter Medicaid","ref":"Avenues- Fort Wayne","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1035053","name":"Heather Hunnicut","co":"2025-12-17T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Managed Health Network (MHN)","ref":"Avenues- Fort Wayne","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1035526","name":"Lonnie Howard","co":"2025-12-18T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Ambetter of Indiana INS","ref":"Avenues- Fort Wayne","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1035543","name":"Michael Lynch","co":"2025-12-18T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"ANTHEM BCBS IN MCD","ref":"Avenues- Fort Wayne","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1035553","name":"Kelsey Brooks","co":"2025-12-18T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"DNU McClaren MD WISE HIP","ref":"Avenues- Fort Wayne","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1035571","name":"Tyease Dunn","co":"2025-12-18T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"ANTHEM BCBS IN MCD","ref":"Avenues- Fort Wayne","lost_r":"Lost to Competitor","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1035685","name":"Troy Bratton","co":"2025-12-18T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Parkview Behavioral Health Institiute","lost_r":"Lost to Competitor","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1036137","name":"Juanita Conley","co":"2025-12-19T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"Lost to Competitor","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1036511","name":"Todd Blevins","co":"2025-12-19T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1038418","name":"Ethan Nei","co":"2025-12-23T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"MHS Ambetter Medicaid","ref":"Avenues- Fort Wayne","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1038734","name":"Clint Davis","co":"2025-12-23T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"","ref":"Internet","lost_r":"Will not Commit","aband_r":"","rep":"Unassigned","created_by":"vmuchnik@providenthcm.com"},{"id":"1039491","name":"Patrick McCormick","co":"2025-12-25T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1041430","name":"Julius Leon","co":"2025-12-29T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Ambetter of Indiana INS","ref":"Rise Recovery","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1041849","name":"Zachariah Holden","co":"2025-12-29T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"MHS Ambetter Medicaid","ref":"Avenues- Fort Wayne","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1045346","name":"Jaslynne Mitchell","co":"2026-01-04T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"DNU CARESOURCE IN MCD","ref":"The Rescue Mission","lost_r":"Will not Commit","aband_r":"","rep":"Jafus Woods","created_by":"jwoods@striverecovery.com"},{"id":"1046608","name":"Jerry Browning","co":"2026-01-05T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Indiana Managed Health Services","ref":"Rise Recovery","lost_r":"Cannot be Reached","aband_r":"","rep":"Unassigned","created_by":"nwilliams@striverecovery.com"},{"id":"1047497","name":"Michael Lash","co":"2026-01-06T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1049170","name":"Rahul Gupta","co":"2026-01-08T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Test","ref":"Avenues- Fort Wayne","lost_r":"Will not Commit","aband_r":"","rep":"Unassigned","created_by":"vmuchnik@providenthcm.com"},{"id":"1050040","name":"Amanda Bateman","co":"2026-01-09T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"DNU CARESOURCE IN MCD","ref":"Community Medical Services","lost_r":"Cannot be Reached","aband_r":"","rep":"Unassigned","created_by":"klubovich@striverecovery.com"},{"id":"1051165","name":"john smith","co":"2026-01-10T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"ANTHEM BCBS IN MCD","ref":"Rise Recovery","lost_r":"Will not Commit","aband_r":"","rep":"Unassigned","created_by":"nwilliams@striverecovery.com"},{"id":"1052363","name":"Deserea McConnell","co":"2026-01-12T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1053024","name":"Heidi Fitzgerald","co":"2026-01-13T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"BCBS - INDIANA INS","ref":"Bridges of Hope","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1053696","name":"Tony Smith","co":"2026-01-13T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"United Behavioral Health","ref":"Lutheran Hospital Downtown","lost_r":"Cannot be Reached","aband_r":"","rep":"Unassigned","created_by":"lkey@striverecovery.com"},{"id":"1055270","name":"Qualesha Johnson","co":"2026-01-15T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"State of Indiana Department of Correction-Probation","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1056012","name":"Gage Waddle","co":"2026-01-16T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Indiana Managed Health Services","ref":"Internet","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1056502","name":"charles chase","co":"2026-01-16T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"ANTHEM BCBS IN MCD","ref":"Avenues- Fort Wayne","lost_r":"Cannot be Reached","aband_r":"","rep":"Leodis Key","created_by":"lkey@striverecovery.com"},{"id":"1057418","name":"Test1 Test","co":"2026-01-19T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"","ref":"Rise Recovery","lost_r":"Will not Commit","aband_r":"","rep":"Unassigned","created_by":"nwilliams@striverecovery.com"},{"id":"1057586","name":"Kylie Whiteman","co":"2026-01-19T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"ANTHEM BCBS IN MCD","ref":"Bridges of Hope","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1057757","name":"Christina Reis","co":"2026-01-19T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"ANTHEM BCBS IN MCD","ref":"Bridges of Hope","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1058021","name":"Gage Davis","co":"2026-01-19T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"ANTHEM BCBS IN MCD","ref":"Bridges of Hope","lost_r":"Cannot be Reached","aband_r":"","rep":"Natalie Williams","created_by":"nwilliams@striverecovery.com"},{"id":"1058372","name":"Jason Hannah","co":"2026-01-20T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Parkview Randallia","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1061816","name":"Daniel Griffin","co":"2026-01-23T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1062147","name":"Richard Bunch","co":"2026-01-24T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"UNITED HEALTHCARE MCD","ref":"Avenues- Fort Wayne","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1062345","name":"Blake Citrowsab","co":"2026-01-25T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Internet","lost_r":"Cannot be Reached","aband_r":"","rep":"Heath Terhune","created_by":"hterhune@striverecovery.com"},{"id":"1062350","name":"Blake Citrowske","co":"2026-01-25T00:00:00","admit":"","outcome":"Lost","stage":"VOB: On Queue","loc":"","ins":"Medicaid Anthem HIP","ref":"Internet","lost_r":"Cannot be Reached","aband_r":"","rep":"Heath Terhune","created_by":"hterhune@striverecovery.com"},{"id":"1062616","name":"Mark Hoffmann","co":"2026-01-26T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"ANTHEM BCBS IN MCD","ref":"Internet","lost_r":"Cannot be Reached","aband_r":"","rep":"Kristina Wegman","created_by":"Kwegman@striverecovery.com"},{"id":"1062809","name":"Rudy Combs","co":"2026-01-26T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Indiana Managed Health Services","ref":"","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1063061","name":"Jason Gase","co":"2026-01-26T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1064913","name":"Marlon Jefferson","co":"2026-01-28T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues-Indy","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1068328","name":"Ian Howell","co":"2026-02-02T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Bridges of Hope","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1070805","name":"Latonya Williams","co":"2026-02-04T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Northern Path Recovery","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1074813","name":"Paige Wasson","co":"2026-02-09T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Google/Seo","lost_r":"Cannot be Reached","aband_r":"","rep":"Kristina Wegman","created_by":"Kwegman@striverecovery.com"},{"id":"1075617","name":"Mia Scruggs","co":"2026-02-10T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"DNU MEDICAID HEALTHY INDIANA PLAN","ref":"Strive Employee","lost_r":"Cannot be Reached","aband_r":"","rep":"Kevin Lubovich","created_by":"klubovich@striverecovery.com"},{"id":"1076209","name":"Allen Kelso","co":"2026-02-11T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Indiana Managed Health Services","ref":"Northern Path Recovery","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1076242","name":"Trevor Storey","co":"2026-02-11T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1076935","name":"Joseph Elser","co":"2026-02-12T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1079503","name":"Kristin Verhaeghe","co":"2026-02-16T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Avenues-Indy","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1081751","name":"Joseph Burns","co":"2026-02-18T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Indiana Managed Health Services","ref":"Avenues- Fort Wayne","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1083008","name":"Jeffrey Hamilton","co":"2026-02-19T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Internet","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1085015","name":"Test Testovich","co":"2026-02-23T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"ANTHEM BCBS IN MCD","ref":"Lutheran Hospital ER- Stellhorn","lost_r":"Will not Travel","aband_r":"","rep":"Unassigned","created_by":"vmuchnik@providenthcm.com"},{"id":"1085881","name":"Mark Frigo","co":"2026-02-24T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"BCBS - INDIANA INS","ref":"Internet","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1086611","name":"talazia Thomas","co":"2026-02-24T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Lutheran Hospital Downtown","lost_r":"Cannot be Reached","aband_r":"","rep":"Kristina Wegman","created_by":"Kwegman@striverecovery.com"},{"id":"1087178","name":"Nicholos Luttrell","co":"2026-02-25T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Northeastern Center-Auburn","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1088013","name":"Kevin Rutledge","co":"2026-02-26T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Indiana Managed Health Services","ref":"Internet","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1090450","name":"Shawn Simpson-Wiegman","co":"2026-03-02T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues- South Bend","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1090652","name":"Jennifer Linville","co":"2026-03-02T00:00:00","admit":"","outcome":"Lost","stage":"Pre-Screen: In Progress","loc":"","ins":"Indiana Managed Health Services","ref":"Avenues- Fort Wayne","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1090712","name":"Troy Turner","co":"2026-03-02T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Indiana Managed Health Services","ref":"Parkview Regional Medical Center","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1093233","name":"Kimberly Cole","co":"2026-03-05T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues-Indy","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1093287","name":"Lawrence Bickel","co":"2026-03-05T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Northern Path Recovery","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1093587","name":"Joshua Richardson","co":"2026-03-05T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Internet","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1094461","name":"Christopher McCann","co":"2026-03-06T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Strive Recovery","lost_r":"Cannot be Reached","aband_r":"","rep":"Unassigned","created_by":"Pyuzonbeatty@striverecovery.com"},{"id":"1096067","name":"Noel Wicker","co":"2026-03-09T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Bridges of Hope","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1096094","name":"Cabrini Stott","co":"2026-03-09T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Indiana Managed Health Services","ref":"Avenues- South Bend","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1097945","name":"JulianTest TestUser","co":"2026-03-11T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"","ref":"","lost_r":"Will not Travel","aband_r":"","rep":"Unassigned","created_by":"vmuchnik@providenthcm.com"},{"id":"1103456","name":"Ronald Orich","co":"2026-03-18T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Indiana Managed Health Services","ref":"Avenues- Fort Wayne","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1105263","name":"Christen Ford","co":"2026-03-20T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1106908","name":"Colette Bishop","co":"2026-03-23T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"MEDICAID INDIANA","ref":"State of IN Dept of Correction-Parole","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1112169","name":"Brian Wilson","co":"2026-03-30T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1112550","name":"Justin Eckelbarger","co":"2026-03-30T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1112611","name":"Cassara Craig","co":"2026-03-30T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Indiana Managed Health Services","ref":"Internet","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1114500","name":"Tyler Rugg","co":"2026-04-01T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Parkview Randallia","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1119664","name":"Haley Fountain","co":"2026-04-07T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Lutheran Hospital Downtown","lost_r":"Cannot be Reached","aband_r":"","rep":"Gabrielle Joyce","created_by":"gjoyce@striverecovery.com"},{"id":"1120519","name":"Brandon Martin","co":"2026-04-08T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Indiana Managed Health Services","ref":"Avenues- Fort Wayne","lost_r":"Will not Commit","aband_r":"","rep":"Mary Louisse Cordero","created_by":"mcordero@providenthcc.com"},{"id":"1122458","name":"Daniel Heck","co":"2026-04-10T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Hickory Treatment Center-Albion","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1125065","name":"Raven Fancher","co":"2026-04-14T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Indiana Managed Health Services","ref":"Avenues- Fort Wayne","lost_r":"Will not Commit","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1125958","name":"Diego Moreno","co":"2026-04-14T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"Indiana Managed Health Services","ref":"Rise Recovery","lost_r":"Lost to Competitor","aband_r":"","rep":"Mary Louisse Cordero","created_by":"mcordero@providenthcc.com"},{"id":"1128472","name":"EUTHAN LAMPKIN","co":"2026-04-17T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"MEDICAID INDIANA","ref":"The Rescue Mission","lost_r":"Cannot be Reached","aband_r":"","rep":"Gabrielle Joyce","created_by":"gjoyce@striverecovery.com"},{"id":"1128518","name":"darnelius ollie","co":"2026-04-17T00:00:00","admit":"","outcome":"Lost","stage":"Entered","loc":"","ins":"MEDICAID INDIANA","ref":"Strive Recovery","lost_r":"Cannot be Reached","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1000070","name":"margaret Smith","co":"2025-10-30T00:00:00","admit":"","outcome":"Lost","stage":"Pre-Screen: On Queue","loc":"","ins":"Medicaid Anthem HIP","ref":"Google/Seo","lost_r":"Will not Commit","aband_r":"","rep":"Unassigned","created_by":"cbisig@striverecovery.com"},{"id":"1107651","name":"Amy England","co":"2026-03-23T00:00:00","admit":"","outcome":"Scheduled","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Bridges of Hope","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1110355","name":"James Weidemann","co":"2026-03-26T00:00:00","admit":"","outcome":"Scheduled","stage":"Entered","loc":"","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1127064","name":"Metta Hopkins","co":"2026-04-16T00:00:00","admit":"","outcome":"Scheduled","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1130338","name":"Jennifer Leer","co":"2026-04-20T00:00:00","admit":"","outcome":"Scheduled","stage":"Entered","loc":"","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1126183","name":"Katherine Rao","co":"2026-04-15T00:00:00","admit":"","outcome":"Scheduled","stage":"Entered","loc":"","ins":"MEDICAID INDIANA","ref":"Lutheran Hospital Downtown","lost_r":"","aband_r":"","rep":"Gabrielle Joyce","created_by":"gjoyce@striverecovery.com"},{"id":"878055","name":"Jacob Test","co":"2025-06-11T00:00:00","admit":"2000-01-01T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"","ref":"Parkview Behavioral Health Institiute","lost_r":"","aband_r":"","rep":"Jason Miller","created_by":"jason.miller@sunwavehealth.com"},{"id":"878057","name":"Jason Test","co":"2025-06-11T00:00:00","admit":"2000-01-01T00:00:00","outcome":"Admitted","stage":"VOB: On Queue","loc":"Discharged","ins":"","ref":"","lost_r":"","aband_r":"","rep":"Unassigned","created_by":"jason.miller@sunwavehealth.com"},{"id":"987344","name":"Test1 Test","co":"2025-10-14T00:00:00","admit":"2000-01-01T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"","ref":"","lost_r":"","aband_r":"","rep":"Jacob Machinia","created_by":"jacob.machinia@sunwavehealth.com"},{"id":"987345","name":"Test2 Test","co":"2025-10-14T00:00:00","admit":"2000-01-01T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"","ref":"","lost_r":"","aband_r":"","rep":"Jacob Machinia","created_by":"jacob.machinia@sunwavehealth.com"},{"id":"987348","name":"Test3 Test","co":"2025-10-14T00:00:00","admit":"2000-01-01T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"","ref":"","lost_r":"","aband_r":"","rep":"Jacob Machinia","created_by":"jacob.machinia@sunwavehealth.com"},{"id":"987351","name":"Test4 Test","co":"2025-10-14T00:00:00","admit":"2000-01-01T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"","ref":"","lost_r":"","aband_r":"","rep":"Jacob Machinia","created_by":"jacob.machinia@sunwavehealth.com"},{"id":"997105","name":"Dusty Test Test","co":"2025-10-27T00:00:00","admit":"2000-01-01T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Managed Health Network (MHN)","ref":"","lost_r":"","aband_r":"","rep":"Maggie Parker","created_by":"mparker@striverecovery.com"},{"id":"1000545","name":"Jozef Hoot","co":"2025-10-30T00:00:00","admit":"2025-11-11T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"BCBS - INDIANA INS","ref":"The Grove Estate","lost_r":"","aband_r":"","rep":"Unassigned","created_by":"vmansfield@striverecovery.com"},{"id":"1003806","name":"Kevin Doctor","co":"2025-11-04T00:00:00","admit":"2025-11-11T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"BCBS - INDIANA INS","ref":"The Grove Estate","lost_r":"","aband_r":"","rep":"Cassie Bisig","created_by":"cbisig@striverecovery.com"},{"id":"1004622","name":"Test Test7","co":"2025-11-05T00:00:00","admit":"2000-01-01T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"","ref":"","lost_r":"","aband_r":"","rep":"Unassigned","created_by":"cbisig@striverecovery.com"},{"id":"1005722","name":"Aaron Olbrys","co":"2025-11-06T00:00:00","admit":"2025-11-13T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"BCBS - INDIANA INS","ref":"","lost_r":"","aband_r":"","rep":"Cassie Bisig","created_by":"cbisig@striverecovery.com"},{"id":"1006216","name":"Robert Small","co":"2025-11-07T00:00:00","admit":"2025-11-13T00:00:00","outcome":"Admitted","stage":"VOB: On Queue","loc":"Discharged","ins":"UNITED HEALTHCARE MCD","ref":"","lost_r":"","aband_r":"","rep":"Unassigned","created_by":"cbisig@striverecovery.com"},{"id":"1006746","name":"Keri Goldwood","co":"2025-11-07T00:00:00","admit":"2025-11-10T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"DNU  McLaren MdWise Hoosier","ref":"Celebrate Senior Living","lost_r":"","aband_r":"","rep":"Maggie Parker","created_by":"mparker@striverecovery.com"},{"id":"1008273","name":"Scott Carteaux","co":"2025-11-10T00:00:00","admit":"2025-11-17T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Legacy Treatment Center","lost_r":"","aband_r":"","rep":"Unassigned","created_by":"cbisig@striverecovery.com"},{"id":"1009256","name":"William \"Andy\" Clark","co":"2025-11-11T00:00:00","admit":"2025-11-12T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Humana MCD","ref":"Park Center-Parkview- Peer Recovery","lost_r":"","aband_r":"","rep":"Cassie Bisig","created_by":"cbisig@striverecovery.com"},{"id":"1010175","name":"Michael Wenzel","co":"2025-11-12T00:00:00","admit":"2025-11-14T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"MEDICAID INDIANA","ref":"Celebrate Senior Living","lost_r":"","aband_r":"","rep":"Victoria Mansfield","created_by":"vmansfield@striverecovery.com"},{"id":"1012479","name":"Christopher Falloon","co":"2025-11-15T00:00:00","admit":"2025-11-16T00:00:00","outcome":"Admitted","stage":"VOB: Needs Review","loc":"Discharged","ins":"BCBS - INDIANA INS","ref":"Lutheran Hospital Downtown","lost_r":"","aband_r":"","rep":"Natalie Williams","created_by":"nwilliams@striverecovery.com"},{"id":"1012555","name":"Conner Paxton","co":"2025-11-15T00:00:00","admit":"2026-04-07T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"PREMERA BLUE CROSS INS","ref":"Strive Recovery","lost_r":"","aband_r":"","rep":"Jackson Brokaw","created_by":"jbrokaw@striverecovery.com"},{"id":"1013047","name":"Marcus Mickles","co":"2025-11-17T00:00:00","admit":"2025-11-19T00:00:00","outcome":"Admitted","stage":"VOB: Needs Review","loc":"Discharged","ins":"Humana MCD","ref":"Northern Path Recovery","lost_r":"","aband_r":"","rep":"Cassie Bisig","created_by":"cbisig@striverecovery.com"},{"id":"1013198","name":"darnelius ollie","co":"2025-11-17T00:00:00","admit":"2025-11-18T00:00:00","outcome":"Admitted","stage":"VOB: Needs Review","loc":"Discharged","ins":"Ambetter of Indiana INS","ref":"Avenues-Indy","lost_r":"","aband_r":"","rep":"Cassie Bisig","created_by":"cbisig@striverecovery.com"},{"id":"1013469","name":"Jennifer Avilez","co":"2025-11-17T00:00:00","admit":"2025-11-25T00:00:00","outcome":"Admitted","stage":"VOB: Needs Review","loc":"Discharged","ins":"DNU McClaren MD WISE HIP","ref":"Hickory Treatment Center-Albion","lost_r":"","aband_r":"","rep":"Cassie Bisig","created_by":"cbisig@striverecovery.com"},{"id":"1014799","name":"Bobbett Cripe","co":"2025-11-18T00:00:00","admit":"2025-11-20T00:00:00","outcome":"Admitted","stage":"VOB: On Queue","loc":"Discharged","ins":"DNU CARESOURCE IN MCD","ref":"Avenues-Indy","lost_r":"","aband_r":"","rep":"Victoria Mansfield","created_by":"vmansfield@striverecovery.com"},{"id":"1015307","name":"Jaylen Meltzer","co":"2025-11-19T00:00:00","admit":"2025-11-28T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"BCBS - INDIANA INS","ref":"Avenues-Indy","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1015613","name":"Kasandra Hicks","co":"2025-11-19T00:00:00","admit":"2025-11-21T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"MEDICAID INDIANA","ref":"Parkview Behavioral Health Institiute","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1016098","name":"Test Test7","co":"2025-11-20T00:00:00","admit":"2000-01-01T00:00:00","outcome":"Admitted","stage":"","loc":"Discharged","ins":"","ref":"","lost_r":"","aband_r":"","rep":"Unassigned","created_by":"sjohnson@striverecovery.com"},{"id":"1016138","name":"Jesse Rose","co":"2025-11-20T00:00:00","admit":"2025-11-20T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"MEDICAID INDIANA","ref":"Northern Path Recovery","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1016976","name":"Reginald Crowder","co":"2025-11-21T00:00:00","admit":"2025-12-03T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"ANTHEM BCBS IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1017865","name":"Michael Wenzel","co":"2025-11-23T00:00:00","admit":"2025-11-23T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"MEDICAID INDIANA","ref":"Celebrate Senior Living","lost_r":"","aband_r":"","rep":"Natalie Williams","created_by":"nwilliams@striverecovery.com"},{"id":"1019728","name":"Lashawn Pace","co":"2025-11-25T00:00:00","admit":"2025-12-03T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Ambetter of Indiana INS","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1020303","name":"Terrence Durst","co":"2025-11-26T00:00:00","admit":"2025-12-01T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"MHS Ambetter Medicaid","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1020372","name":"Shontae Lacy","co":"2025-11-26T00:00:00","admit":"2025-12-06T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1021039","name":"Kristina Elkins","co":"2025-11-28T00:00:00","admit":"2025-12-11T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"MHS Ambetter Medicaid","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1021066","name":"Michael Graff","co":"2025-11-28T00:00:00","admit":"2025-11-28T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"HEALTHY INDIANA PLAN","ref":"Parkview Behavioral Health Institiute","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1021457","name":"Ryan Knipp","co":"2025-11-29T00:00:00","admit":"2025-12-01T00:00:00","outcome":"Admitted","stage":"VOB: Refer Out","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"The Crossing Community Church","lost_r":"","aband_r":"","rep":"Stacey Wiesemann","created_by":"swiesemann@striverecovery.com"},{"id":"1022228","name":"Ronald Noel","co":"2025-12-01T00:00:00","admit":"2025-12-04T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"ANTHEM BCBS IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1022309","name":"Thomas Morr","co":"2025-12-01T00:00:00","admit":"2025-12-02T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"State of Indiana Department of Correction-Probation","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1022622","name":"Test Tester8","co":"2025-12-01T00:00:00","admit":"2000-01-01T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"","ref":"","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1023975","name":"Damion Lucas","co":"2025-12-02T00:00:00","admit":"2025-12-02T00:00:00","outcome":"Admitted","stage":"VOB: On Queue","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Lutheran Hospital Downtown","lost_r":"","aband_r":"","rep":"Unassigned","created_by":"vmansfield@striverecovery.com"},{"id":"1024398","name":"Mikel Hudson","co":"2025-12-03T00:00:00","admit":"2025-12-09T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1024510","name":"Michael Emrich","co":"2025-12-03T00:00:00","admit":"2025-12-15T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"MHS Ambetter Medicaid","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1024738","name":"Lyndsey Pickerill","co":"2025-12-03T00:00:00","admit":"2025-12-12T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1024781","name":"Roc Davidson","co":"2025-12-03T00:00:00","admit":"2025-12-03T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Recovery Cafe-Sober Living","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1024835","name":"Christopher Devore","co":"2025-12-03T00:00:00","admit":"2025-12-03T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Rise Recovery","lost_r":"","aband_r":"","rep":"Natalie Williams","created_by":"nwilliams@striverecovery.com"},{"id":"1025127","name":"Shari Williams","co":"2025-12-04T00:00:00","admit":"2025-12-05T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Humana MCD","ref":"Celebrate Senior Living","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1025388","name":"Richard Martinez","co":"2025-12-04T00:00:00","admit":"2025-12-11T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1025507","name":"Lee Winkelman","co":"2025-12-04T00:00:00","admit":"2025-12-11T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"ANTHEM BCBS IN MCD","ref":"Parkview Randallia","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1026305","name":"Jessica Lewis","co":"2025-12-05T00:00:00","admit":"2025-12-26T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1026349","name":"Sarah Stout","co":"2025-12-05T00:00:00","admit":"2025-12-05T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"State of Indiana Department of Correction-Probation","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1026413","name":"Story Lee","co":"2025-12-05T00:00:00","admit":"2025-12-06T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Parkview Randallia","lost_r":"","aband_r":"","rep":"Victoria Mansfield","created_by":"vmansfield@striverecovery.com"},{"id":"1027679","name":"Ronald \"Ron\" Scott","co":"2025-12-08T00:00:00","admit":"2025-12-09T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Strive Recovery","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1027792","name":"Chad Warrix","co":"2025-12-08T00:00:00","admit":"2025-12-14T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Hickory Treatment Center-Albion","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1029082","name":"Nicholas Powers","co":"2025-12-09T00:00:00","admit":"2025-12-09T00:00:00","outcome":"Admitted","stage":"VOB: Needs Review","loc":"Discharged","ins":"ANTHEM BCBS IN MCD","ref":"Rise Recovery","lost_r":"","aband_r":"","rep":"Victoria Mansfield","created_by":"vmansfield@striverecovery.com"},{"id":"1029131","name":"James Branch","co":"2025-12-09T00:00:00","admit":"2025-12-09T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"ANTHEM BCBS IN MCD","ref":"Google/Seo","lost_r":"","aband_r":"","rep":"Natalie Williams","created_by":"nwilliams@striverecovery.com"},{"id":"1029821","name":"Ashley Adcox","co":"2025-12-10T00:00:00","admit":"2025-12-10T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Strive Recovery","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1030749","name":"Timothy Letner","co":"2025-12-11T00:00:00","admit":"2025-12-22T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"ANTHEM BCBS IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1031053","name":"Sarah Skelly","co":"2025-12-11T00:00:00","admit":"2026-01-05T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"MHS Ambetter Medicaid","ref":"Allendale Treatment","lost_r":"","aband_r":"","rep":"Unassigned","created_by":"vmansfield@striverecovery.com"},{"id":"1031364","name":"Megan Ford","co":"2025-12-12T00:00:00","admit":"2025-12-13T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Strive Recovery","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1032850","name":"Justin Eckelbarger","co":"2025-12-15T00:00:00","admit":"2025-12-19T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1033586","name":"Rudy Combs","co":"2025-12-16T00:00:00","admit":"2025-12-17T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1033610","name":"Delon Stocking","co":"2025-12-16T00:00:00","admit":"2025-12-22T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"MHS Ambetter Medicaid","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1033766","name":"Montario Gray","co":"2025-12-16T00:00:00","admit":"2025-12-18T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"ANTHEM BCBS IN MCD","ref":"Lutheran Social Services of Indiana","lost_r":"","aband_r":"","rep":"Unassigned","created_by":"vmansfield@striverecovery.com"},{"id":"1033963","name":"Timothy Brown","co":"2025-12-16T00:00:00","admit":"2025-12-16T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Aetna INS","ref":"Strive Recovery","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1034686","name":"Heath Shaffer","co":"2025-12-17T00:00:00","admit":"2025-12-27T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1036327","name":"Terry Mitchell","co":"2025-12-19T00:00:00","admit":"2026-01-09T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1037182","name":"Krystal Gilbert","co":"2025-12-21T00:00:00","admit":"2025-12-21T00:00:00","outcome":"Admitted","stage":"VOB: In Progress","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Strive Recovery","lost_r":"","aband_r":"","rep":"Heath Terhune","created_by":"hterhune@striverecovery.com"},{"id":"1037842","name":"Richard Bunch","co":"2025-12-22T00:00:00","admit":"2025-12-30T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"UNITED HEALTHCARE MCD","ref":"","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1039924","name":"Corbin Lawson","co":"2025-12-26T00:00:00","admit":"2025-12-31T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Strive Recovery","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1041275","name":"Lauren Davis","co":"2025-12-29T00:00:00","admit":"2025-12-29T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"ANTHEM BCBS IN MCD","ref":"Strive Recovery","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1041331","name":"Raeanne Segovia","co":"2025-12-29T00:00:00","admit":"2025-12-30T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Strive Recovery","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1041804","name":"Terry Brown","co":"2025-12-29T00:00:00","admit":"2026-03-26T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"MEDICAID INDIANA","ref":"Parkview Behavioral Health Institiute","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1041882","name":"Steven Kroemer","co":"2025-12-29T00:00:00","admit":"2025-12-30T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Humana MCD","ref":"Parkview Randallia","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1042320","name":"Patricia Boddie","co":"2025-12-30T00:00:00","admit":"2025-12-31T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Strive Recovery","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1042458","name":"Rexanna Langford","co":"2025-12-30T00:00:00","admit":"2025-12-30T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Lutheran Hospital Downtown","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1044236","name":"Jenny Theos","co":"2026-01-02T00:00:00","admit":"2026-01-10T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1044291","name":"Devin DuMont","co":"2026-01-02T00:00:00","admit":"2026-01-09T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1046070","name":"Tiyeanna Watson","co":"2026-01-05T00:00:00","admit":"2026-01-10T00:00:00","outcome":"Admitted","stage":"VOB: In Progress","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Strive Recovery","lost_r":"","aband_r":"","rep":"Heath Terhune","created_by":"hterhune@striverecovery.com"},{"id":"1047161","name":"Neil Dove","co":"2026-01-06T00:00:00","admit":"2026-01-06T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"BCBS - INDIANA INS","ref":"Internet","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1047348","name":"Skylair Cornett","co":"2026-01-06T00:00:00","admit":"2026-01-09T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1047926","name":"Jessica Webster","co":"2026-01-07T00:00:00","admit":"2026-01-29T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Internet","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1049594","name":"James Prough","co":"2026-01-08T00:00:00","admit":"2026-01-15T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1050188","name":"Devin Philebaum","co":"2026-01-09T00:00:00","admit":"2026-01-10T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"HEALTHY INDIANA PLAN","ref":"Rise Recovery","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1050492","name":"Javier Oliveras","co":"2026-01-09T00:00:00","admit":"2026-01-22T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"MEDICAID INDIANA","ref":"Hickory Treatment Center-Albion","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1050512","name":"James Hancock","co":"2026-01-09T00:00:00","admit":"2026-01-13T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"MEDICAID INDIANA","ref":"Hickory Treatment Center-Albion","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1051087","name":"Michelle Harris","co":"2026-01-10T00:00:00","admit":"2026-01-13T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"United Healthcare","ref":"Northeastern Center-Albion","lost_r":"","aband_r":"","rep":"Kevin Lubovich","created_by":"klubovich@striverecovery.com"},{"id":"1051856","name":"Raynika Brown","co":"2026-01-12T00:00:00","admit":"2026-01-13T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Internet","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1052031","name":"Thomas Lung","co":"2026-01-12T00:00:00","admit":"2026-01-26T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"BCBS - INDIANA INS","ref":"Internet","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1052091","name":"vadim muchnik","co":"2026-01-12T00:00:00","admit":"2026-01-28T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"BCBS - CT (Anthem)","ref":"Google/Seo","lost_r":"","aband_r":"","rep":"Vadim Muchnik","created_by":"vmuchnik@providenthcm.com"},{"id":"1053389","name":"Monica Elgin","co":"2026-01-13T00:00:00","admit":"2026-01-19T00:00:00","outcome":"Admitted","stage":"VOB: In Progress","loc":"Discharged","ins":"Humana MCD","ref":"Inasmuch Ministries","lost_r":"","aband_r":"","rep":"Unassigned","created_by":"vmansfield@striverecovery.com"},{"id":"1053928","name":"Henry Williams","co":"2026-01-14T00:00:00","admit":"2026-01-19T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"UNITED HEALTHCARE MCD","ref":"Inasmuch Ministries","lost_r":"","aband_r":"","rep":"Victoria Mansfield","created_by":"vmansfield@striverecovery.com"},{"id":"1055745","name":"Cara Blatchford","co":"2026-01-16T00:00:00","admit":"2026-01-16T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Parkview Behavioral Health Institiute","lost_r":"","aband_r":"","rep":"Kevin Lubovich","created_by":"klubovich@striverecovery.com"},{"id":"1056287","name":"James Vaughn","co":"2026-01-16T00:00:00","admit":"2026-01-16T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"The Rescue Mission","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1056435","name":"Dejiona \"Deja\" McElory","co":"2026-01-16T00:00:00","admit":"2026-01-16T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Four10 Ministries","lost_r":"","aband_r":"","rep":"Leodis Key","created_by":"lkey@striverecovery.com"},{"id":"1056605","name":"Sarah Mcfalls","co":"2026-01-17T00:00:00","admit":"2026-02-11T00:00:00","outcome":"Admitted","stage":"VOB: On Queue","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Lutheran Social Services of Indiana","lost_r":"","aband_r":"","rep":"Kevin Lubovich","created_by":"klubovich@striverecovery.com"},{"id":"1057514","name":"Scott Bure","co":"2026-01-19T00:00:00","admit":"2026-01-19T00:00:00","outcome":"Admitted","stage":"VOB: On Queue","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Parkview Behavioral Health Institiute","lost_r":"","aband_r":"","rep":"Jafus Woods","created_by":"jwoods@striverecovery.com"},{"id":"1057582","name":"Marla Sanchez","co":"2026-01-19T00:00:00","admit":"2026-02-03T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"ANTHEM BCBS IN MCD","ref":"Bridges of Hope","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1057992","name":"Montana Warner","co":"2026-01-19T00:00:00","admit":"2026-01-20T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"ANTHEM BCBS IN MCD","ref":"Internet","lost_r":"","aband_r":"","rep":"Jafus Woods","created_by":"jwoods@striverecovery.com"},{"id":"1058298","name":"Isaiah Howard","co":"2026-01-20T00:00:00","admit":"2026-01-22T00:00:00","outcome":"Admitted","stage":"VOB: Refer Out","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"State of Indiana Department of Correction-Probation","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1058327","name":"Thomas Bartley","co":"2026-01-20T00:00:00","admit":"2026-01-21T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1058729","name":"Sarah Waikel","co":"2026-01-20T00:00:00","admit":"2026-01-23T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Internet","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1059479","name":"Samuel Eltzroth","co":"2026-01-21T00:00:00","admit":"2026-01-22T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Self-Pay","ref":"Internet","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1059546","name":"David Hedges","co":"2026-01-21T00:00:00","admit":"2026-01-21T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"State of Indiana Department of Correction-Probation","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1060133","name":"Boris Harvey","co":"2026-01-21T00:00:00","admit":"2026-01-22T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"The Rescue Mission","lost_r":"","aband_r":"","rep":"Kevin Lubovich","created_by":"klubovich@striverecovery.com"},{"id":"1060539","name":"Cole Tipton","co":"2026-01-22T00:00:00","admit":"2026-02-07T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Internet","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1060891","name":"Elliot Franklin","co":"2026-01-22T00:00:00","admit":"2026-01-22T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1062614","name":"Mark Hoffmann","co":"2026-01-26T00:00:00","admit":"2026-01-27T00:00:00","outcome":"Admitted","stage":"","loc":"Discharged","ins":"","ref":"","lost_r":"","aband_r":"","rep":"Unassigned","created_by":"Kwegman@striverecovery.com"},{"id":"1062746","name":"Cloe Kerper","co":"2026-01-26T00:00:00","admit":"2026-02-03T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"ANTHEM BCBS IN MCD","ref":"Bridges of Hope","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1062911","name":"Sabra McInturff","co":"2026-01-26T00:00:00","admit":"2026-02-02T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"The Recovery Village-Indianapolis","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1062988","name":"thomas lung","co":"2026-01-26T00:00:00","admit":"2026-01-26T00:00:00","outcome":"Admitted","stage":"","loc":"Discharged","ins":"","ref":"","lost_r":"","aband_r":"","rep":"Unassigned","created_by":"vlewis@striverecovery.com"},{"id":"1064213","name":"Cody Lopardo","co":"2026-01-27T00:00:00","admit":"1987-01-01T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"The Recovery Village-Indianapolis","lost_r":"","aband_r":"","rep":"Kevin Lubovich","created_by":"klubovich@striverecovery.com"},{"id":"1064504","name":"Javin Easterly","co":"2026-01-28T00:00:00","admit":"2026-01-28T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"State of Indiana Department of Correction-Probation","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1064703","name":"Tara Hale","co":"2026-01-28T00:00:00","admit":"2026-02-12T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"State of Indiana Department of Correction-Probation","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1064770","name":"Jerome Pearson","co":"2026-01-28T00:00:00","admit":"2026-02-04T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Northern Path Recovery","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1064785","name":"Michael Bonham","co":"2026-01-28T00:00:00","admit":"2026-02-02T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Northern Path Recovery","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1064869","name":"Joe Tester","co":"2026-01-28T00:00:00","admit":"2026-01-28T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Rise Recovery","lost_r":"","aband_r":"","rep":"Natalie Williams","created_by":"nwilliams@striverecovery.com"},{"id":"1065438","name":"Bertram Smith","co":"2026-01-29T00:00:00","admit":"2026-01-29T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Internet","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1065959","name":"Aaron Buechel","co":"2026-01-29T00:00:00","admit":"2026-01-30T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Parkview Randallia","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1066428","name":"Kelly Reed","co":"2026-01-30T00:00:00","admit":"2026-02-04T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Bridges of Hope","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1068361","name":"Thomas Bartley","co":"2026-02-02T00:00:00","admit":"2026-03-29T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.5","ins":"CARESOURCE IN MCD","ref":"","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1068687","name":"Damion Lucas","co":"2026-02-02T00:00:00","admit":"2026-02-03T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Parkview Regional Medical Center","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1069320","name":"Junior Perez","co":"2026-02-03T00:00:00","admit":"2026-02-13T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1069351","name":"Marvel Verser","co":"2026-02-03T00:00:00","admit":"2026-02-03T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Parkview Randallia","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1069537","name":"Heaven Rhymes","co":"2026-02-03T00:00:00","admit":"2026-02-11T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Parkview Behavioral Health Institiute","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1069927","name":"Blake Settles","co":"2026-02-03T00:00:00","admit":"2026-02-04T00:00:00","outcome":"Admitted","stage":"Pre-Screen: On Queue","loc":"Discharged","ins":"DNU MEDICAID HEALTHY INDIANA PLAN","ref":"Northern Path Recovery","lost_r":"","aband_r":"","rep":"Kevin Lubovich","created_by":"klubovich@striverecovery.com"},{"id":"1070635","name":"David Zervos","co":"2026-02-04T00:00:00","admit":"2026-02-05T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Internet","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1071823","name":"Foster Mowrey","co":"2026-02-05T00:00:00","admit":"2026-02-05T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"State of Indiana Department of Correction-Probation","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1072720","name":"Edward Clough","co":"2026-02-06T00:00:00","admit":"2026-02-06T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"MEDICAID INDIANA","ref":"Lutheran Hospital Downtown","lost_r":"","aband_r":"","rep":"Kevin Lubovich","created_by":"klubovich@striverecovery.com"},{"id":"1073981","name":"Tizhe Rabon","co":"2026-02-09T00:00:00","admit":"2026-02-13T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1074019","name":"Janeatte Castaneda","co":"2026-02-09T00:00:00","admit":"2026-02-17T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1074438","name":"Juan-Carlos Milligan","co":"2026-02-09T00:00:00","admit":"2026-02-16T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1075033","name":"Margaret Buchanan","co":"2026-02-10T00:00:00","admit":"2026-02-12T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"ANTHEM BCBS IN MCD","ref":"Behavorial Health Group","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1075264","name":"Raeanne Segovia","co":"2026-02-10T00:00:00","admit":"2026-02-10T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Strive Recovery","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1076202","name":"Justin Combs","co":"2026-02-11T00:00:00","admit":"2026-02-15T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Northern Path Recovery","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1077005","name":"Donavin Blash","co":"2026-02-12T00:00:00","admit":"2026-02-19T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Hickory Treatment Center-Albion","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1077694","name":"Bill Ledington","co":"2026-02-12T00:00:00","admit":"2026-02-12T00:00:00","outcome":"Admitted","stage":"VOB: On Queue","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Lutheran Hospital Downtown","lost_r":"","aband_r":"","rep":"Kevin Lubovich","created_by":"klubovich@striverecovery.com"},{"id":"1079622","name":"Sara Soverns","co":"2026-02-16T00:00:00","admit":"2026-02-24T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Avenues-Indy","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1079833","name":"Tara Hale","co":"2026-02-16T00:00:00","admit":"2026-02-16T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"State of Indiana Department of Correction-Probation","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1080943","name":"Cassara Craig","co":"2026-02-17T00:00:00","admit":"2026-02-19T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Internet","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1081254","name":"Toni Weir","co":"2026-02-18T00:00:00","admit":"2026-02-18T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Strive Recovery","lost_r":"","aband_r":"","rep":"Victoria Mansfield","created_by":"vmansfield@striverecovery.com"},{"id":"1083383","name":"Sara Tanner","co":"2026-02-20T00:00:00","admit":"2026-02-21T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Internet","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1083420","name":"James Tanner","co":"2026-02-20T00:00:00","admit":"2026-02-21T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Internet","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1083526","name":"Kristen Argerbright","co":"2026-02-20T00:00:00","admit":"2026-02-24T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"ANTHEM BCBS IN MCD","ref":"Internet","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1083578","name":"Betty Atkins","co":"2026-02-20T00:00:00","admit":"2026-03-03T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Bridges of Hope","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1083863","name":"Billie Long","co":"2026-02-20T00:00:00","admit":"2026-03-11T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Avenues-Indy","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1083888","name":"Jessica Mcdonald","co":"2026-02-20T00:00:00","admit":"2026-03-02T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1084878","name":"Dustin Fugate","co":"2026-02-23T00:00:00","admit":"2026-02-23T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Lutheran Hospital Downtown","lost_r":"","aband_r":"","rep":"Victoria Mansfield","created_by":"vmansfield@striverecovery.com"},{"id":"1084996","name":"Sabra McInturff","co":"2026-02-23T00:00:00","admit":"2026-02-23T00:00:00","outcome":"Admitted","stage":"","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"","lost_r":"","aband_r":"","rep":"Unassigned","created_by":"nwilliams@striverecovery.com"},{"id":"1085011","name":"Skyler Stage","co":"2026-02-23T00:00:00","admit":"2026-02-23T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"State of Indiana Department of Correction-Probation","lost_r":"","aband_r":"","rep":"Heath Terhune","created_by":"hterhune@striverecovery.com"},{"id":"1085912","name":"Bryan Armstrong","co":"2026-02-24T00:00:00","admit":"2026-03-02T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Northern Path Recovery","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1086928","name":"Ryan Emenhiser","co":"2026-02-25T00:00:00","admit":"2026-03-04T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1086960","name":"Jaylee Pattee","co":"2026-02-25T00:00:00","admit":"2026-03-02T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Northern Path Recovery","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1086991","name":"Randy Burger","co":"2026-02-25T00:00:00","admit":"2026-03-13T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1087366","name":"Rashaun Muhammad","co":"2026-02-25T00:00:00","admit":"2026-03-03T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Bridges of Hope","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1087767","name":"Sidney Crawley","co":"2026-02-26T00:00:00","admit":"2026-03-01T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1088621","name":"Evon Griffith","co":"2026-02-27T00:00:00","admit":"2026-02-27T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Lutheran Hospital Downtown","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1088816","name":"Austin Hendrix","co":"2026-02-27T00:00:00","admit":"2026-03-02T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Maple Heights Behavorial Health","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1089672","name":"Dustin Fugate","co":"2026-02-28T00:00:00","admit":"2026-02-28T00:00:00","outcome":"Admitted","stage":"VOB: On Queue","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Lutheran Hospital Downtown","lost_r":"","aband_r":"","rep":"Laura Dombroff","created_by":"ldombroff@striverecovery.com"},{"id":"1090339","name":"Tara Hale","co":"2026-03-02T00:00:00","admit":"2026-03-09T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"State of Indiana Department of Correction-Probation","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1090897","name":"Kenneth McRoberts","co":"2026-03-02T00:00:00","admit":"2026-03-06T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"MEDICAID INDIANA","ref":"Maple Heights Behavorial Health","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1092306","name":"Molly Schnepf","co":"2026-03-04T00:00:00","admit":"2026-03-04T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"State of Indiana Department of Correction-Probation","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1092523","name":"Marshall Grabill","co":"2026-03-04T00:00:00","admit":"2026-03-09T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1092539","name":"Michelle Whittenburg","co":"2026-03-04T00:00:00","admit":"2026-03-24T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Avenues- South Bend","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1093418","name":"Michael Platter","co":"2026-03-05T00:00:00","admit":"2026-03-05T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"State of Indiana Department of Correction-Probation","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1094496","name":"Michael Adock","co":"2026-03-06T00:00:00","admit":"2026-03-06T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Thirteen Step House","lost_r":"","aband_r":"","rep":"Unassigned","created_by":"vmansfield@striverecovery.com"},{"id":"1094780","name":"Madalaine Groover","co":"2026-03-06T00:00:00","admit":"2026-03-13T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Google/Seo","lost_r":"","aband_r":"","rep":"Unassigned","created_by":"vmansfield@striverecovery.com"},{"id":"1094946","name":"Kloee Conner","co":"2026-03-07T00:00:00","admit":"2026-03-07T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.1","ins":"CARESOURCE IN MCD","ref":"Parkview Randallia","lost_r":"","aband_r":"","rep":"Victoria Mansfield","created_by":"vmansfield@striverecovery.com"},{"id":"1095276","name":"Bruce Bruner","co":"2026-03-08T00:00:00","admit":"2026-03-08T00:00:00","outcome":"Admitted","stage":"VOB: Refer Out","loc":"Discharged","ins":"Self-Pay","ref":"Rise Recovery","lost_r":"","aband_r":"","rep":"Jacob Lyvers","created_by":"jlyvers@striverecovery.com"},{"id":"1095367","name":"Betty Atkins","co":"2026-03-08T00:00:00","admit":"2026-03-08T00:00:00","outcome":"Admitted","stage":"Pre-Screen: On Queue","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Bridges of Hope","lost_r":"","aband_r":"","rep":"Jacob Lyvers","created_by":"jlyvers@striverecovery.com"},{"id":"1095789","name":"Robert Clemons","co":"2026-03-09T00:00:00","admit":"2026-03-10T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Anabranch Recovery","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1096001","name":"Catherine Burgis","co":"2026-03-09T00:00:00","admit":"2026-03-19T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Bridges of Hope","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1096390","name":"Chason Huser","co":"2026-03-09T00:00:00","admit":"2026-03-19T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1096596","name":"James Treckman","co":"2026-03-09T00:00:00","admit":"2026-03-09T00:00:00","outcome":"Admitted","stage":"VOB: In Progress","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Park Center-Parkview- Peer Recovery","lost_r":"","aband_r":"","rep":"Brittney Collins","created_by":"bcollins@striverecovery.com"},{"id":"1096887","name":"Catherine Emenhiser","co":"2026-03-10T00:00:00","admit":"2026-03-10T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Avenues- South Bend","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1097846","name":"Alejandro Lopez","co":"2026-03-11T00:00:00","admit":"2026-03-11T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Parkview Randallia","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1097948","name":"Sonya Morrison","co":"2026-03-11T00:00:00","admit":"2026-03-14T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1098004","name":"Kaleb Harris","co":"2026-03-11T00:00:00","admit":"2026-03-15T00:00:00","outcome":"Admitted","stage":"VOB: In Progress","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1098888","name":"Isaac Rust","co":"2026-03-12T00:00:00","admit":"2026-04-13T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1099494","name":"Jessica Reed","co":"2026-03-12T00:00:00","admit":"2026-03-13T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.1","ins":"Indiana Managed Health Services","ref":"","lost_r":"","aband_r":"","rep":"Unassigned","created_by":"bcollins@striverecovery.com"},{"id":"1099721","name":"Jazmin Minga","co":"2026-03-13T00:00:00","admit":"2026-03-13T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.1","ins":"Indiana Managed Health Services","ref":"State of Indiana Department of Correction-Probation","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1099863","name":"Elise Moore","co":"2026-03-13T00:00:00","admit":"2026-03-17T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Pinnacle Treatment Centers","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1100580","name":"Elizabeth Wooster","co":"2026-03-14T00:00:00","admit":"2026-03-16T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.1","ins":"MEDICAID INDIANA","ref":"Maple Heights Behavorial Health","lost_r":"","aband_r":"","rep":"Celia Patrick","created_by":"cpatrick@striverecovery.com"},{"id":"1100629","name":"Michael Smead","co":"2026-03-14T00:00:00","admit":"2026-03-18T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Celia Patrick","created_by":"cpatrick@striverecovery.com"},{"id":"1101367","name":"Natasha Richards","co":"2026-03-16T00:00:00","admit":"2026-04-14T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Avenues- South Bend","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1101868","name":"Indiana Duncan","co":"2026-03-16T00:00:00","admit":"2026-04-16T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Internet","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1104568","name":"John Rogers","co":"2026-03-19T00:00:00","admit":"2026-03-31T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.1","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1104690","name":"Justice Ries","co":"2026-03-19T00:00:00","admit":"2026-04-01T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.1","ins":"MEDICAID INDIANA","ref":"Bridges of Hope","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1105243","name":"Justin Haas","co":"2026-03-20T00:00:00","admit":"2026-03-29T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1106179","name":"William Mach","co":"2026-03-21T00:00:00","admit":"2026-03-21T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Recovery Cafe-Sober Living","lost_r":"","aband_r":"","rep":"Celia Patrick","created_by":"cpatrick@striverecovery.com"},{"id":"1106544","name":"Wesley Vaughan-Luke","co":"2026-03-22T00:00:00","admit":"2026-03-22T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Internet","lost_r":"","aband_r":"","rep":"Laura Dombroff","created_by":"ldombroff@striverecovery.com"},{"id":"1107480","name":"Wesley Soliday","co":"2026-03-23T00:00:00","admit":"2026-03-23T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.1","ins":"Indiana Managed Health Services","ref":"Parkview Kosciusko/Warsaw","lost_r":"","aband_r":"","rep":"Unassigned","created_by":"vmansfield@striverecovery.com"},{"id":"1107483","name":"Brett Roe","co":"2026-03-23T00:00:00","admit":"2026-03-27T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Inasmuch Ministries","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1108651","name":"Tyler Visel","co":"2026-03-24T00:00:00","admit":"2026-03-30T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1109003","name":"Joseph Johnson","co":"2026-03-25T00:00:00","admit":"2026-03-26T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"CleanSlate-East State","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1109257","name":"Sabra McInturff","co":"2026-03-25T00:00:00","admit":"2026-03-25T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1109826","name":"Zachary Campbell","co":"2026-03-26T00:00:00","admit":"2026-03-26T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Internet","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1110059","name":"William (Trey) Thompson","co":"2026-03-26T00:00:00","admit":"2026-03-26T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"State of Indiana Department of Correction-Probation","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1110871","name":"Richard Washburn","co":"2026-03-27T00:00:00","admit":"2026-03-27T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Internet","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1111051","name":"Lee Winkelman","co":"2026-03-27T00:00:00","admit":"2026-03-27T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.1","ins":"ANTHEM BCBS IN MCD","ref":"Parkview Randallia","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1111109","name":"Tyler Amstutz","co":"2026-03-27T00:00:00","admit":"2026-03-29T00:00:00","outcome":"Admitted","stage":"VOB: On Queue","loc":"Res 3.5","ins":"Indiana Managed Health Services","ref":"Park Center-Parkview- Peer Recovery","lost_r":"","aband_r":"","rep":"Celia Patrick","created_by":"cpatrick@striverecovery.com"},{"id":"1112194","name":"Patricia Boddie","co":"2026-03-30T00:00:00","admit":"2026-04-08T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.5","ins":"Medicaid Anthem HIP","ref":"Strive Recovery","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1112200","name":"Jenny Theos","co":"2026-03-30T00:00:00","admit":"2026-04-12T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.5","ins":"CARESOURCE IN MCD","ref":"Avenues- Fort Wayne","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1112687","name":"Mackenzie Kline","co":"2026-03-30T00:00:00","admit":"2026-03-30T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.5","ins":"Medicaid Anthem HIP","ref":"State of Indiana Department of Correction-Probation","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1113484","name":"Alexis Younger","co":"2026-03-31T00:00:00","admit":"2026-04-13T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.1","ins":"Medicaid Anthem HIP","ref":"Northern Path Recovery","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1116303","name":"Thomas Lung","co":"2026-04-02T00:00:00","admit":"2026-04-08T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"BCBS - INDIANA INS","ref":"Internet","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1116551","name":"Darren Sandberg","co":"2026-04-02T00:00:00","admit":"2026-04-03T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.5","ins":"BCBS - INDIANA INS","ref":"Parkview Regional Medical Center","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1116762","name":"Michael Mettler","co":"2026-04-02T00:00:00","admit":"2026-04-07T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.1","ins":"Indiana Managed Health Services","ref":"Bridges of Hope","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1117342","name":"Robert Pearson","co":"2026-04-03T00:00:00","admit":"2026-04-03T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.5","ins":"CARESOURCE IN MCD","ref":"Parkview Regional Medical Center","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1117510","name":"Amber Martin","co":"2026-04-03T00:00:00","admit":"2026-04-03T00:00:00","outcome":"Admitted","stage":"VOB: In Progress","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Parkview Randallia","lost_r":"","aband_r":"","rep":"Gabrielle Joyce","created_by":"gjoyce@striverecovery.com"},{"id":"1117919","name":"Allen Lantz","co":"2026-04-04T00:00:00","admit":"2026-04-05T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.5","ins":"MEDICAID INDIANA","ref":"Lutheran Hospital Downtown","lost_r":"","aband_r":"","rep":"Gabrielle Joyce","created_by":"gjoyce@striverecovery.com"},{"id":"1119047","name":"Jason Billman","co":"2026-04-06T00:00:00","admit":"2026-04-06T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"BCBS - INDIANA INS","ref":"State of IN Dept of Correction-Parole","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1119614","name":"Kimberly Collier","co":"2026-04-07T00:00:00","admit":"2026-04-08T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Community Medical Services","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1120134","name":"Trina Kramer","co":"2026-04-07T00:00:00","admit":"2026-04-13T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.1","ins":"Medicaid Anthem HIP","ref":"Internet","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1121484","name":"Alyssa Trice","co":"2026-04-09T00:00:00","admit":"2026-04-22T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.1","ins":"Indiana Managed Health Services","ref":"Avenues- South Bend","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1121537","name":"Jacob Davis","co":"2026-04-09T00:00:00","admit":"2026-04-09T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.5","ins":"Medicaid Anthem HIP","ref":"Community Medical Services","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1121933","name":"Michael Adock","co":"2026-04-09T00:00:00","admit":"2026-04-09T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Thirteen Step House","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1122650","name":"Larry Dennis","co":"2026-04-10T00:00:00","admit":"2026-04-21T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.1","ins":"Medicaid Anthem HIP","ref":"Hickory Treatment Center-Albion","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1122960","name":"Jason Hager","co":"2026-04-10T00:00:00","admit":"2026-04-11T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Lutheran Hospital Downtown","lost_r":"","aband_r":"","rep":"Gabrielle Joyce","created_by":"gjoyce@striverecovery.com"},{"id":"1123517","name":"Jessica Webster","co":"2026-04-12T00:00:00","admit":"2026-04-13T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Indiana Managed Health Services","ref":"Internet","lost_r":"","aband_r":"","rep":"Unassigned","created_by":"bcollins@striverecovery.com"},{"id":"1124519","name":"Michael Bonham","co":"2026-04-13T00:00:00","admit":"2026-04-22T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.5","ins":"Medicaid Anthem HIP","ref":"Northern Path Recovery","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1124605","name":"Nathan Strange","co":"2026-04-13T00:00:00","admit":"2026-04-13T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Rise Recovery","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1125977","name":"Contrell James","co":"2026-04-14T00:00:00","admit":"2026-04-15T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.5","ins":"Medicaid Anthem HIP","ref":"Lutheran Hospital Downtown","lost_r":"","aband_r":"","rep":"Kristina Wegman","created_by":"Kwegman@striverecovery.com"},{"id":"1126318","name":"Bryan Armstrong","co":"2026-04-15T00:00:00","admit":"2026-04-15T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"Medicaid Anthem HIP","ref":"Northern Path Recovery","lost_r":"","aband_r":"","rep":"Mary Louisse Cordero","created_by":"mcordero@providenthcc.com"},{"id":"1128287","name":"Wendell Boddie","co":"2026-04-17T00:00:00","admit":"2026-04-23T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.1","ins":"Medicaid Anthem HIP","ref":"Hickory Treatment Center-Albion","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1128395","name":"Jamie Vickery","co":"2026-04-17T00:00:00","admit":"2026-04-20T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.1","ins":"MEDICAID INDIANA","ref":"Hickory Treatment Center-Albion","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1128674","name":"Trei Geiser","co":"2026-04-17T00:00:00","admit":"2026-04-18T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"Strive Recovery","lost_r":"","aband_r":"","rep":"Mary Louisse Cordero","created_by":"mcordero@providenthcc.com"},{"id":"1128809","name":"Foster Mowrey","co":"2026-04-18T00:00:00","admit":"2026-04-18T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Discharged","ins":"CARESOURCE IN MCD","ref":"State of Indiana Department of Correction-Probation","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1129977","name":"Adam Yoder","co":"2026-04-20T00:00:00","admit":"2026-04-21T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.1","ins":"CARESOURCE IN MCD","ref":"Internet","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1130760","name":"Jason Hager","co":"2026-04-21T00:00:00","admit":"2026-04-21T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.5","ins":"Medicaid Anthem HIP","ref":"Lutheran Hospital Downtown","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"},{"id":"1141063","name":"Keith Cuci","co":"2026-04-21T00:00:00","admit":"2026-04-21T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.5","ins":"Medicaid Anthem HIP","ref":"Lutheran Hospital Downtown","lost_r":"","aband_r":"","rep":"Gabrielle Joyce","created_by":"gjoyce@striverecovery.com"},{"id":"1142598","name":"Terry Brown","co":"2026-04-22T00:00:00","admit":"2026-04-22T00:00:00","outcome":"Admitted","stage":"Entered","loc":"Res 3.5","ins":"MEDICAID INDIANA","ref":"Parkview Behavioral Health Institiute","lost_r":"","aband_r":"","rep":"Shreenda Johnson","created_by":"sjohnson@striverecovery.com"}];
+var ACTS  = [];
+var USERS = [{"id":"42860","name":"Amira Krvavac","email":"akrvavac@providenthcm.com","role":""},{"id":"58507","name":"Maggie Parker","email":"mparker@striverecovery.com","role":""},{"id":"42867","name":"Vadim Muchnik","email":"vmuchnik@providenthcm.com","role":""},{"id":"60633","name":"Victoria Mansfield","email":"vmansfield@striverecovery.com","role":""},{"id":"43798","name":"Jasmine Morris","email":"jmorris@elevateccbhc.org","role":""},{"id":"60891","name":"Cassie Bisig","email":"cbisig@striverecovery.com","role":""},{"id":"63081","name":"Dusty Dawkins","email":"ddawkins@striverecovery.com","role":""},{"id":"63082","name":"Summer Magnuson","email":"smagnuson@striverecovery.com","role":""},{"id":"63135","name":"Meredith Dawson","email":"mdawson@striverecovery.com","role":""},{"id":"63229","name":"John Delahoyde","email":"jdelahoyde@striverecovery.com","role":""},{"id":"63399","name":"Shreenda Johnson","email":"sjohnson@striverecovery.com","role":""},{"id":"53251","name":"Maria DeFrenza","email":"mdefrenza@providenthcm.com","role":""},{"id":"64857","name":"Brittney Collins","email":"bcollins@striverecovery.com","role":""},{"id":"63833","name":"Stephanie Craft","email":"scraft@striverecovery.com","role":""},{"id":"65251","name":"Nicole Maurer","email":"nmaurer@striverecovery.com","role":""},{"id":"65613","name":"Vanessa Lewis","email":"vlewis@striverecovery.com","role":""},{"id":"64099","name":"Laura Dombroff","email":"ldombroff@striverecovery.com","role":""},{"id":"64489","name":"Crystal Galindo","email":"cgalindo@striverecovery.com","role":""},{"id":"66071","name":"Dan Feinstein","email":"dfeinstein@providenthcc.com","role":""},{"id":"66138","name":"Caleb Moore","email":"cmoore@striverecovery.com","role":""},{"id":"66284","name":"Tamara  Roberts","email":"troberts@striverecovery.com","role":""},{"id":"66297","name":"Jacob Lyvers","email":"jlyvers@striverecovery.com","role":""},{"id":"66351","name":"Kedisha Gardner","email":"kgardner@striverecovery.com","role":""},{"id":"66512","name":"Cherish Batts","email":"CBatts@gericareindy.com","role":""},{"id":"66713","name":"David Hooker","email":"dhooker@striverecovery.com","role":""},{"id":"53665","name":"Aaron Cohen","email":"acohen@providenthcm.com","role":""},{"id":"66759","name":"Jessica  Jones","email":"jjones@pikemedical.com","role":""},{"id":"66760","name":"Shannon Welsh","email":"swelsh@pikemedical.com","role":""},{"id":"66938","name":"Eugene Farmer","email":"efarmer@striverecovery.com","role":""},{"id":"66943","name":"Heather Grunawalt","email":"Hgrunawalt@striverecovery.com","role":""},{"id":"63788","name":"Kristina Wegman","email":"Kwegman@striverecovery.com","role":""},{"id":"67099","name":"Matt Archer","email":"marcher@striverecovery.com","role":""},{"id":"67254","name":"Celia Patrick","email":"cpatrick@striverecovery.com","role":""},{"id":"67389","name":"Natalie Alverado","email":"nalvarado@providenthcm.com","role":""},{"id":"67446","name":"Lori  Wiley","email":"lwiley@pikemedical.com","role":""},{"id":"67966","name":"Heather Reynolds","email":"hreynolds@striverecovery.com","role":""},{"id":"67970","name":"Jaden Sutton","email":"jsutton@striverecovery.com","role":""},{"id":"67637","name":"Joshua Cotton","email":"Jcotton@striverecovery.com","role":""},{"id":"68109","name":"Paris Avant","email":"pavant@pikemedical.com","role":""},{"id":"68268","name":"Gabrielle Joyce","email":"gjoyce@striverecovery.com","role":""},{"id":"66940","name":"Sarnisha Derrick","email":"Sderrick@striverecovery.com","role":""},{"id":"68316","name":"Damien Stahl","email":"dstahl@striverecovery.com","role":""},{"id":"68318","name":"Matthew Derbyshire","email":"mderbyshire@striverecovery.com","role":""},{"id":"68319","name":"Robyan Shain","email":"rshain@striverecovery.com","role":""},{"id":"68320","name":"Alicia Reddin","email":"areddin@striverecovery.com","role":""},{"id":"68173","name":"Dominick Monaco","email":"dmonaco@striverecovery.com","role":""},{"id":"42864","name":"Nicole Russell","email":"nrussell@elevateccbhc.org","role":""},{"id":"68374","name":"Estel Pinguli","email":"epinguli@providenthcc.com","role":""},{"id":"68430","name":"Mary Louisse Cordero","email":"mcordero@providenthcc.com","role":""},{"id":"68485","name":"Chelsey Conroy","email":"cconroy@striverecovery.com","role":""},{"id":"68315","name":"Melanie Fox","email":"Mfox@striverecovery.com","role":""},{"id":"67687","name":"Danielle Sykes","email":"Daniesykes3@icloud.com","role":""},{"id":"68314","name":"Martha Spradlin","email":"mspradlin@striverecovery.com","role":""},{"id":"63083","name":"Heath Terhune","email":"hterhune@striverecovery.com","role":""},{"id":"68647","name":"Darnella Williams Robbins","email":"dwilliams@striverecovery.com","role":""},{"id":"68698","name":"Holly Clevenger","email":"hclevenger@striverecovery.com","role":""},{"id":"68699","name":"Angel Fink","email":"afink@striverecovery.com","role":""},{"id":"69304","name":"Shania Price","email":"sprice@striverecovery.com","role":""},{"id":"69353","name":"Katie Richard","email":"krichard@striverecovery.com","role":""},{"id":"69546","name":"Jamie Swaidner","email":"jswaidner@striverecovery.com","role":""},{"id":"69547","name":"Regina","email":"Rmanasse@striverecovery.com","role":""}];
+var TASKS = [];
+var META  = {"refreshed_at":"2026-05-05T18:29:05.031348+00:00","opps_count":438,"acts_count":0,"users_count":61,"tasks_count":0,"open_tasks":0};
+
+// ── Filter state ──────────────────────────────────────────────────────────
+var FILTERS = { period: '30D', outcome: '', users: [], humanOnly: true };
+var CHARTS = {};
+var SORT_STATE = {};
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function pd(s) { if (!s) return null; var d = new Date(s); return isNaN(d) ? null : d; }
+function fmt(d) { if (!d) return ''; var m=(d.getMonth()+1)+''; var dd=d.getDate()+''; return (m.length<2?'0':'')+m+'/'+(dd.length<2?'0':'')+dd+'/'+d.getFullYear(); }
+function fmtDT(d) { if (!d) return ''; var t = d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true}); return fmt(d)+' '+t; }
+function esc(s) { if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function pct(n, d) { return d > 0 ? ((n/d)*100).toFixed(1)+'%' : '0%'; }
+function periodCutoff(p) {
+  var d = new Date(); d.setHours(0,0,0,0);
+  if (p === '7D') d.setDate(d.getDate()-7);
+  else if (p === '30D') d.setDate(d.getDate()-30);
+  else if (p === '90D') d.setDate(d.getDate()-90);
+  else if (p === 'YTD') d = new Date(d.getFullYear(),0,1);
+  else return null;
+  return d;
+}
+function isHuman(a) { return a.type !== 'Workflow' && a.type !== 'Wave'; }
+function inPeriod(date) { var c = periodCutoff(FILTERS.period); if (!c) return true; var d = pd(date); return d && d >= c; }
+function userMatch(name) { return !FILTERS.users.length || FILTERS.users.indexOf(name) >= 0; }
+function outcomeMatch(o) { return !FILTERS.outcome || o.outcome === FILTERS.outcome; }
+function filteredOpps() { return OPPS.filter(outcomeMatch); }
+function filteredActs() {
+  return ACTS.filter(function(a){
+    if (FILTERS.humanOnly && !isHuman(a)) return false;
+    if (!userMatch(a.by)) return false;
+    if (!inPeriod(a.date)) return false;
+    return true;
+  });
+}
+function periodOpps() { return filteredOpps().filter(function(o){ return inPeriod(o.co); }); }
+function median(arr) { if(!arr.length) return 0; var s=arr.slice().sort(function(a,b){return a-b}); var m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; }
+function destroyChart(key) { if (CHARTS[key]) { CHARTS[key].destroy(); delete CHARTS[key]; } }
+function isAdmitted(o) { return o.outcome === 'Admitted' || o.outcome === 'AdmittedLegacy'; }
+function isInPipe(o) { var s=(o.outcome||'').toLowerCase(); return s==='active'||s==='scheduled'; }
+function isLost(o) { return o.outcome === 'Lost' || o.outcome === 'Abandoned'; }
+
+// ── Tab nav ───────────────────────────────────────────────────────────────
+document.querySelectorAll('.tnav').forEach(function(b){
+  b.onclick = function() { showTab(b.dataset.tab, b); };
+});
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active')});
+  document.querySelectorAll('.tnav').forEach(function(b){b.classList.remove('active')});
+  document.getElementById('tab-'+name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  buildTab(name);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function buildTab(n){
+  if      (n === 'overview')      buildOverview();
+  else if (n === 'pipeline')      buildPipeline();
+  else if (n === 'productivity')  buildProductivity();
+  else if (n === 'effectiveness') buildEffectiveness();
+  else if (n === 'flow')          buildFlow();
+  else if (n === 'trends')        buildTrends();
+}
+
+// ── Filter handlers ───────────────────────────────────────────────────────
+document.querySelectorAll('.filt-btn[data-period]').forEach(function(b){
+  b.onclick = function() {
+    document.querySelectorAll('.filt-btn[data-period]').forEach(function(x){x.classList.remove('active')});
+    b.classList.add('active'); FILTERS.period = b.dataset.period; rebuildAll();
+  };
+});
+document.querySelectorAll('.filt-btn[data-view]').forEach(function(b){
+  b.onclick = function() {
+    document.querySelectorAll('.filt-btn[data-view]').forEach(function(x){x.classList.remove('active')});
+    b.classList.add('active'); FILTERS.humanOnly = (b.dataset.view === 'human'); rebuildAll();
+  };
+});
+document.getElementById('outcomeSel').onchange = function(e){
+  FILTERS.outcome = e.target.value; rebuildAll();
+};
+document.getElementById('userSel').onchange = function(e){
+  var sel = []; for (var i=0;i<e.target.options.length;i++) if (e.target.options[i].selected) sel.push(e.target.options[i].value);
+  FILTERS.users = sel; rebuildAll();
+};
+function rebuildAll() {
+  Object.keys(CHARTS).forEach(destroyChart);
+  var active = document.querySelector('.tnav.active');
+  if (active) buildTab(active.dataset.tab);
+}
+
+// Populate user select with activity counts
+(function() {
+  var sel = document.getElementById('userSel');
+  var counts = {};
+  ACTS.forEach(function(a){ if (a.by && isHuman(a)) counts[a.by] = (counts[a.by]||0)+1; });
+  var sorted = Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; });
+  sorted.forEach(function(n){
+    var o = document.createElement('option'); o.value = n; o.textContent = n+' ('+counts[n]+')';
+    sel.appendChild(o);
+  });
+})();
+
+// Populate sync label
+(function(){
+  if (META && META.refreshed_at) {
+    var d = new Date(META.refreshed_at);
+    document.getElementById('syncLbl').textContent = 'synced ' + d.toLocaleString();
+  }
+  document.getElementById('footer').innerHTML = META ? (META.opps_count + ' opportunities · ' + META.acts_count + ' activities · ' + META.users_count + ' users · ' + META.tasks_count + ' tasks') : '';
+})();
+
+// ──────────────────────────────────────────────────────────────────
+// OVERVIEW
+// ──────────────────────────────────────────────────────────────────
+function buildOverview() {
+  var oppsP = periodOpps();
+  var actsP = filteredActs();
+  var allFilteredOpps = filteredOpps();
+  var p = FILTERS.period;
+  var now = new Date(); now.setHours(0,0,0,0);
+
+  var total    = oppsP.length;
+  var admitted = oppsP.filter(isAdmitted).length;
+  var inPipe   = oppsP.filter(isInPipe).length;
+  var lost     = oppsP.filter(isLost).length;
+
+  var html = '';
+  html += '<div class="kpis">';
+  html += kpi('navy',  'Created (' + p + ')', total);
+  html += kpi('green', 'Admitted', admitted);
+  html += kpi('teal',  'Admit Rate', pct(admitted, total));
+  html += kpi('blue',  'In Pipeline', inPipe);
+  html += kpi('red',   'Lost / Abandoned', lost);
+  html += kpi('amber', 'Activities (' + p + ')', actsP.length);
+  html += '</div>';
+
+  // Activity Leaderboard
+  var lb = {};
+  actsP.forEach(function(a){
+    if (!a.by) return;
+    if (!lb[a.by]) lb[a.by] = { total:0, opps:new Set(), types:{} };
+    lb[a.by].total++;
+    if (a.oid) lb[a.by].opps.add(a.oid);
+    lb[a.by].types[a.type] = (lb[a.by].types[a.type]||0)+1;
+  });
+  var lbArr = Object.keys(lb).map(function(k){ return { name:k, total:lb[k].total, opps:lb[k].opps.size, types:lb[k].types }; });
+  lbArr.sort(function(a,b){ return b.total - a.total; });
+
+  // Multi-touch admit credit
+  var admittedOids = new Set(allFilteredOpps.filter(isAdmitted).filter(function(o){ return inPeriod(o.admit) || inPeriod(o.co); }).map(function(o){ return o.id; }));
+  var admitCredit = {};
+  ACTS.forEach(function(a){
+    if (FILTERS.humanOnly && !isHuman(a)) return;
+    if (!a.by || !a.oid) return;
+    if (!admittedOids.has(a.oid)) return;
+    if (!admitCredit[a.by]) admitCredit[a.by] = new Set();
+    admitCredit[a.by].add(a.oid);
+  });
+
+  html += '<div class="g3">';
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Activity Leaderboard</div><div class="card-sub">Top contributors · ' + p + '</div></div></div>';
+  html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>User</th><th class="num">Activities</th><th class="num">Opps Touched</th><th class="num">Admits Credited</th></tr></thead><tbody>';
+  if (!lbArr.length) html += '<tr><td colspan="5" class="empty">No activities in this period.</td></tr>';
+  lbArr.slice(0,15).forEach(function(u, i){
+    var medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : ''));
+    var ac = admitCredit[u.name] ? admitCredit[u.name].size : 0;
+    html += '<tr><td><span class="rank-medal">'+medal+'</span>'+(i+1)+'</td><td>'+esc(u.name)+'</td><td class="num">'+u.total+'</td><td class="num">'+u.opps+'</td><td class="num">'+ac+'</td></tr>';
+  });
+  html += '</tbody></table></div></div>';
+
+  // Recent Admissions
+  var recent = allFilteredOpps.filter(isAdmitted).slice().sort(function(a,b){
+    return (pd(b.admit)||pd(b.co)||new Date(0)) - (pd(a.admit)||pd(a.co)||new Date(0));
+  }).slice(0,12);
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Recent Admissions</div><div class="card-sub">Closer = last human activity</div></div></div>';
+  html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Patient</th><th>Admit</th><th>Closer</th></tr></thead><tbody>';
+  if (!recent.length) html += '<tr><td colspan="3" class="empty">No admissions.</td></tr>';
+  recent.forEach(function(o){
+    var oacts = ACTS.filter(function(a){ return a.oid === o.id && isHuman(a); });
+    oacts.sort(function(a,b){ return (pd(b.date)||new Date(0)) - (pd(a.date)||new Date(0)); });
+    var closer = oacts.length ? oacts[0].by : '—';
+    html += '<tr><td>'+esc(o.name)+'</td><td><span class="badge b-green">'+(o.admit?fmt(pd(o.admit)):'—')+'</span></td><td>'+esc(closer)+'</td></tr>';
+  });
+  html += '</tbody></table></div></div></div>';
+
+  // Stuck opportunities
+  var stuck = OPPS.filter(function(o){
+    if (!isInPipe(o)) return false;
+    if (!outcomeMatch(o)) return false;
+    var c = pd(o.co); if (!c) return false;
+    if ((now - c) / 86400000 < 7) return false;
+    var oacts = ACTS.filter(function(a){ return a.oid === o.id && isHuman(a); });
+    var lastDate = null;
+    oacts.forEach(function(a){ var d=pd(a.date); if(d && (!lastDate || d>lastDate)) lastDate=d; });
+    var ageDays = lastDate ? (now-lastDate)/86400000 : (now-c)/86400000;
+    if (ageDays < 7) return false;
+    o._stuck = Math.floor(ageDays);
+    o._lastTouch = lastDate ? fmt(lastDate) : '—';
+    return true;
+  }).sort(function(a,b){ return b._stuck - a._stuck; });
+
+  html += '<div class="g2">';
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Stuck Opportunities (' + stuck.length + ')</div><div class="card-sub">Active · &gt;7d no human activity · amber @14d · red @30d</div></div></div>';
+  html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Patient</th><th>Stage</th><th>Last Touch</th><th class="num">Days</th></tr></thead><tbody>';
+  if (!stuck.length) html += '<tr><td colspan="4" class="empty">No stuck opportunities.</td></tr>';
+  stuck.slice(0,30).forEach(function(o){
+    var cls = o._stuck >= 30 ? 'b-red' : (o._stuck >= 14 ? 'b-amber' : 'b-blue');
+    html += '<tr><td>'+esc(o.name)+'</td><td>'+esc(o.stage)+'</td><td>'+esc(o._lastTouch)+'</td><td class="num"><span class="badge '+cls+'">'+o._stuck+'d</span></td></tr>';
+  });
+  html += '</tbody></table></div></div>';
+
+  // Open CRM Tasks
+  var openTasks = TASKS.filter(function(t){ return t.is_open; }).slice().sort(function(a,b){
+    return (pd(a.due)||new Date(8e15)) - (pd(b.due)||new Date(8e15));
+  });
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Open CRM Tasks (' + openTasks.length + ')</div><div class="card-sub">Sorted by due date</div></div></div>';
+  html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Subject</th><th>Type</th><th>Assigned</th><th>Due</th></tr></thead><tbody>';
+  if (!openTasks.length) html += '<tr><td colspan="4" class="empty">No open tasks.</td></tr>';
+  openTasks.forEach(function(t){
+    var due = pd(t.due);
+    var overdue = due && due < now;
+    var cls = overdue ? 'b-red' : 'b-muted';
+    html += '<tr><td>'+esc(t.subject)+'</td><td>'+esc(t.task_type)+'</td><td>'+esc(t.assigned)+'</td><td><span class="badge '+cls+'">'+(due?fmt(due):'—')+(overdue?' ⚠':'')+'</span></td></tr>';
+  });
+  html += '</tbody></table></div></div></div>';
+
+  document.getElementById('tab-overview').innerHTML = html;
+}
+
+function kpi(color, lbl, val, sub) {
+  var s = sub ? '<div class="kpi-sub">' + esc(sub) + '</div>' : '';
+  return '<div class="kpi ' + color + '"><div class="kpi-lbl">' + esc(lbl) + '</div><div class="kpi-val">' + esc(val) + '</div>' + s + '</div>';
+}
+
+// ──────────────────────────────────────────────────────────────────
+// PIPELINE & FUNNEL
+// ──────────────────────────────────────────────────────────────────
+function buildPipeline() {
+  var oppsP = periodOpps();
+  var p = FILTERS.period;
+
+  // Funnel: Created → Active/Sched → Admitted, with lost/abandoned breakouts
+  var counts = {
+    created: oppsP.length,
+    active: oppsP.filter(function(o){ return o.outcome==='Active'; }).length,
+    scheduled: oppsP.filter(function(o){ return o.outcome==='Scheduled'; }).length,
+    admitted: oppsP.filter(isAdmitted).length,
+    lost: oppsP.filter(function(o){ return o.outcome==='Lost'; }).length,
+    abandoned: oppsP.filter(function(o){ return o.outcome==='Abandoned'; }).length,
+  };
+
+  var html = '';
+  html += '<div class="kpis">';
+  html += kpi('navy',  'Created', counts.created);
+  html += kpi('blue',  'Active', counts.active);
+  html += kpi('purple','Scheduled', counts.scheduled);
+  html += kpi('green', 'Admitted', counts.admitted, pct(counts.admitted, counts.created) + ' of created');
+  html += kpi('amber', 'Lost', counts.lost);
+  html += kpi('red',   'Abandoned', counts.abandoned);
+  html += '</div>';
+
+  html += '<div class="g2">';
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Stage Distribution</div><div class="card-sub">By current stage · ' + p + '</div></div></div>';
+  html += '<div class="chart-wrap"><canvas id="ch-stage"></canvas></div></div>';
+
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Outcome Distribution</div><div class="card-sub">Conversion mix · ' + p + '</div></div></div>';
+  html += '<div class="chart-wrap"><canvas id="ch-outcome"></canvas></div></div></div>';
+
+  // Lost / Abandoned reasons
+  var lostMap = {}, abMap = {};
+  oppsP.forEach(function(o){
+    if (o.outcome === 'Lost' && o.lost_r) lostMap[o.lost_r] = (lostMap[o.lost_r]||0)+1;
+    if (o.outcome === 'Abandoned' && o.aband_r) abMap[o.aband_r] = (abMap[o.aband_r]||0)+1;
+  });
+  html += '<div class="g2">';
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Lost Reasons</div><div class="card-sub">Why opportunities are lost · ' + p + '</div></div></div>';
+  html += renderReasonTable(lostMap, counts.lost);
+  html += '</div>';
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Abandoned Reasons</div><div class="card-sub">Why opportunities are abandoned · ' + p + '</div></div></div>';
+  html += renderReasonTable(abMap, counts.abandoned);
+  html += '</div></div>';
+
+  // Time to admit distribution (admit_date - created_on)
+  var ttaDays = oppsP.filter(isAdmitted).map(function(o){
+    var c = pd(o.co), a = pd(o.admit);
+    if (!c || !a) return null;
+    return Math.max(0, Math.floor((a-c)/86400000));
+  }).filter(function(d){ return d !== null; });
+
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Time to Admit Distribution</div><div class="card-sub">Days from opp creation to admission · ' + p + ' · n=' + ttaDays.length + '</div></div></div>';
+  html += '<div class="chart-wrap"><canvas id="ch-tta"></canvas></div>';
+  if (ttaDays.length) {
+    var avg = (ttaDays.reduce(function(s,v){return s+v;},0) / ttaDays.length).toFixed(1);
+    var med = median(ttaDays).toFixed(1);
+    html += '<div style="margin-top:10px;font-size:12px;color:var(--muted)">Average: <strong style="color:var(--navy)">' + avg + ' days</strong> · Median: <strong style="color:var(--navy)">' + med + ' days</strong></div>';
+  }
+  html += '</div>';
+
+  document.getElementById('tab-pipeline').innerHTML = html;
+
+  // Charts
+  var stageData = {};
+  oppsP.forEach(function(o){ var s = o.stage || '(none)'; stageData[s] = (stageData[s]||0)+1; });
+  var stageLabels = Object.keys(stageData).sort(function(a,b){return stageData[b]-stageData[a]});
+  var stageVals = stageLabels.map(function(k){ return stageData[k]; });
+  destroyChart('stage');
+  CHARTS.stage = new Chart(document.getElementById('ch-stage'), {
+    type:'bar',
+    data:{ labels:stageLabels, datasets:[{ label:'Opps', data:stageVals, backgroundColor:'#0a3d5c', borderRadius:4 }] },
+    options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      scales:{ x:{ ticks:{font:{size:10}} }, y:{ ticks:{font:{size:11}} } },
+      plugins:{ legend:{display:false} } }
+  });
+
+  var outLabels = ['Active','Scheduled','Admitted','AdmittedLegacy','Lost','Abandoned'];
+  var outVals = outLabels.map(function(l){ return oppsP.filter(function(o){return o.outcome===l;}).length; });
+  var outColors = ['#3b82f6','#8b5cf6','#10b981','#3dffc0','#f59e0b','#ef4444'];
+  destroyChart('outcome');
+  CHARTS.outcome = new Chart(document.getElementById('ch-outcome'), {
+    type:'doughnut',
+    data:{ labels:outLabels, datasets:[{ data:outVals, backgroundColor:outColors }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:'right',labels:{font:{size:11}}} } }
+  });
+
+  // TTA histogram
+  var bins = [0,0,0,0,0,0,0]; // 0-1, 2-3, 4-7, 8-14, 15-30, 31-60, 60+
+  ttaDays.forEach(function(d){
+    if (d <= 1) bins[0]++;
+    else if (d <= 3) bins[1]++;
+    else if (d <= 7) bins[2]++;
+    else if (d <= 14) bins[3]++;
+    else if (d <= 30) bins[4]++;
+    else if (d <= 60) bins[5]++;
+    else bins[6]++;
+  });
+  destroyChart('tta');
+  CHARTS.tta = new Chart(document.getElementById('ch-tta'), {
+    type:'bar',
+    data:{ labels:['0-1d','2-3d','4-7d','8-14d','15-30d','31-60d','60d+'],
+           datasets:[{ label:'Opps', data:bins, backgroundColor:'#3dffc0', borderColor:'#0a3d5c', borderWidth:1, borderRadius:4 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} } }
+  });
+}
+
+function renderReasonTable(map, total) {
+  var entries = Object.keys(map).map(function(k){return [k,map[k]];}).sort(function(a,b){return b[1]-a[1]});
+  if (!entries.length) return '<div class="empty">No data for this period.</div>';
+  var h = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Reason</th><th class="num">Count</th><th class="num">%</th></tr></thead><tbody>';
+  entries.forEach(function(e){
+    h += '<tr><td>'+esc(e[0])+'</td><td class="num">'+e[1]+'</td><td class="num">'+pct(e[1], total)+'</td></tr>';
+  });
+  h += '</tbody></table></div>';
+  return h;
+}
+
+// ──────────────────────────────────────────────────────────────────
+// USER PRODUCTIVITY
+// ──────────────────────────────────────────────────────────────────
+function buildProductivity() {
+  var actsP = filteredActs();
+  var p = FILTERS.period;
+  var byUser = {};
+  actsP.forEach(function(a){
+    if (!a.by) return;
+    if (!byUser[a.by]) byUser[a.by] = { total:0, types:{}, opps:new Set(), days:new Set() };
+    var u = byUser[a.by];
+    u.total++;
+    u.types[a.type] = (u.types[a.type]||0)+1;
+    if (a.oid) u.opps.add(a.oid);
+    var d = pd(a.date); if (d) u.days.add(d.toISOString().slice(0,10));
+  });
+  var rows = Object.keys(byUser).map(function(k){
+    var u = byUser[k];
+    return {
+      name: k, total: u.total,
+      call: u.types['Call']||0, note: u.types['Note']||0,
+      email: (u.types['Email']||0) + (u.types['Sms']||0),
+      task: u.types['Task']||0,
+      meeting: u.types['Meeting']||0,
+      opps: u.opps.size, days: u.days.size,
+    };
+  });
+  rows.sort(function(a,b){ return b.total - a.total; });
+  var medTotal = median(rows.map(function(r){return r.total}));
+  var maxTotal = Math.max.apply(null, rows.map(function(r){return r.total}).concat([1]));
+
+  var html = '<div class="kpis">';
+  html += kpi('navy',  'Active Users (' + p + ')', rows.length);
+  html += kpi('blue',  'Total Activities', actsP.length);
+  html += kpi('teal',  'Median per User', Math.round(medTotal));
+  html += kpi('amber', 'Workflow Excluded', FILTERS.humanOnly ? 'YES' : 'NO');
+  html += '</div>';
+
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">User Productivity Table</div><div class="card-sub">Click any column header to sort · ' + p + ' · ' + (FILTERS.humanOnly ? 'Human only' : 'All activity') + '</div></div></div>';
+  html += '<div class="tbl-wrap"><table class="tbl" id="prod-tbl"><thead><tr>';
+  ['User','Total','Calls','Notes','Email/SMS','Tasks','Meetings','Opps','Days Active','vs. Median'].forEach(function(h,i){
+    html += '<th data-col="'+i+'">'+h+'</th>';
+  });
+  html += '</tr></thead><tbody>';
+  if (!rows.length) html += '<tr><td colspan="10" class="empty">No activity in this period.</td></tr>';
+  rows.forEach(function(r){
+    var pctOfMax = Math.min(100, Math.round((r.total/maxTotal)*100));
+    var bar = '<div class="mbar"><div class="mbar-fill" style="width:'+pctOfMax+'%"></div></div>';
+    html += '<tr><td>'+esc(r.name)+'</td><td class="num"><strong>'+r.total+'</strong></td>'
+      + '<td class="num">'+r.call+'</td>'
+      + '<td class="num">'+r.note+'</td>'
+      + '<td class="num">'+r.email+'</td>'
+      + '<td class="num">'+r.task+'</td>'
+      + '<td class="num">'+r.meeting+'</td>'
+      + '<td class="num">'+r.opps+'</td>'
+      + '<td class="num">'+r.days+'</td>'
+      + '<td class="num">'+bar+(medTotal>0?Math.round(r.total/medTotal*100)+'%':'—')+'</td></tr>';
+  });
+  html += '</tbody></table></div></div>';
+
+  // Activity mix chart (top 12)
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Activity Mix by User (Top 12)</div><div class="card-sub">Stacked by activity type</div></div></div>';
+  html += '<div class="chart-wrap-tall"><canvas id="ch-mix"></canvas></div></div>';
+
+  document.getElementById('tab-productivity').innerHTML = html;
+
+  // Sort handlers
+  var tbl = document.getElementById('prod-tbl');
+  tbl.querySelectorAll('th').forEach(function(th, i){
+    th.onclick = function() { sortProdTable(i); };
+  });
+
+  // Stacked bar chart
+  var top12 = rows.slice(0, 12);
+  destroyChart('mix');
+  CHARTS.mix = new Chart(document.getElementById('ch-mix'), {
+    type:'bar',
+    data: {
+      labels: top12.map(function(r){return r.name}),
+      datasets: [
+        { label:'Calls',     data: top12.map(function(r){return r.call}),    backgroundColor:'#3b82f6' },
+        { label:'Notes',     data: top12.map(function(r){return r.note}),    backgroundColor:'#0a3d5c' },
+        { label:'Email/SMS', data: top12.map(function(r){return r.email}),   backgroundColor:'#8b5cf6' },
+        { label:'Tasks',     data: top12.map(function(r){return r.task}),    backgroundColor:'#3dffc0' },
+        { label:'Meetings',  data: top12.map(function(r){return r.meeting}), backgroundColor:'#f59e0b' },
+      ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      scales:{ x:{ stacked:true }, y:{ stacked:true, ticks:{font:{size:11}} } },
+      plugins:{ legend:{position:'top',labels:{font:{size:11}}} }
+    }
+  });
+}
+
+function sortProdTable(colIdx) {
+  var tbl = document.getElementById('prod-tbl');
+  var tbody = tbl.querySelector('tbody');
+  var rows = Array.from(tbody.querySelectorAll('tr')).filter(function(r){return r.children.length>1;});
+  var headers = tbl.querySelectorAll('th');
+  headers.forEach(function(h){ h.classList.remove('sort-asc','sort-desc'); });
+  var asc = SORT_STATE['prod'+colIdx] !== 'asc';
+  SORT_STATE['prod'+colIdx] = asc ? 'asc' : 'desc';
+  headers[colIdx].classList.add(asc ? 'sort-asc' : 'sort-desc');
+  rows.sort(function(a, b){
+    var av = a.children[colIdx].textContent.trim();
+    var bv = b.children[colIdx].textContent.trim();
+    var an = parseFloat(av.replace(/[%,]/g,'')); var bn = parseFloat(bv.replace(/[%,]/g,''));
+    if (!isNaN(an) && !isNaN(bn)) return asc ? an - bn : bn - an;
+    return asc ? av.localeCompare(bv) : bv.localeCompare(av);
+  });
+  rows.forEach(function(r){ tbody.appendChild(r); });
+}
+
+// ──────────────────────────────────────────────────────────────────
+// USER EFFECTIVENESS
+// ──────────────────────────────────────────────────────────────────
+function buildEffectiveness() {
+  var actsP = filteredActs();
+  var p = FILTERS.period;
+
+  // For each user: opps touched (period), admits credited, response time
+  var byUser = {};
+  actsP.forEach(function(a){
+    if (!a.by) return;
+    if (!byUser[a.by]) byUser[a.by] = { opps:new Set(), responses:[] };
+    if (a.oid) byUser[a.by].opps.add(a.oid);
+  });
+
+  // Response time = time from opp creation → first activity by THIS user
+  var oppById = {};
+  OPPS.forEach(function(o){ oppById[o.id] = o; });
+
+  // Group acts by oid+user, find earliest
+  var firstActByUserOpp = {};
+  actsP.forEach(function(a){
+    if (!a.by || !a.oid) return;
+    var key = a.by + '|' + a.oid;
+    var d = pd(a.date); if (!d) return;
+    if (!firstActByUserOpp[key] || d < firstActByUserOpp[key]) firstActByUserOpp[key] = d;
+  });
+  Object.keys(firstActByUserOpp).forEach(function(key){
+    var parts = key.split('|'); var name = parts[0], oid = parts[1];
+    var opp = oppById[oid]; if (!opp) return;
+    var co = pd(opp.co); if (!co) return;
+    var firstAct = firstActByUserOpp[key];
+    var hrs = (firstAct - co) / 3600000;
+    if (hrs < 0) return;
+    if (!byUser[name]) byUser[name] = { opps:new Set(), responses:[] };
+    byUser[name].responses.push(hrs);
+  });
+
+  // Multi-touch admit credit (period)
+  var admittedOids = new Set(filteredOpps().filter(isAdmitted).filter(function(o){ return inPeriod(o.admit) || inPeriod(o.co); }).map(function(o){return o.id}));
+  var adminCred = {};
+  ACTS.forEach(function(a){
+    if (FILTERS.humanOnly && !isHuman(a)) return;
+    if (!a.by || !a.oid) return;
+    if (!admittedOids.has(a.oid)) return;
+    if (!adminCred[a.by]) adminCred[a.by] = new Set();
+    adminCred[a.by].add(a.oid);
+  });
+
+  var rows = Object.keys(byUser).map(function(name){
+    var u = byUser[name];
+    var oppsTouched = u.opps.size;
+    var admits = adminCred[name] ? adminCred[name].size : 0;
+    var avgResponse = u.responses.length ? u.responses.reduce(function(s,v){return s+v},0) / u.responses.length : null;
+    return {
+      name: name, opps: oppsTouched, admits: admits,
+      rate: oppsTouched > 0 ? admits / oppsTouched : 0,
+      avgResponse: avgResponse, n: u.responses.length,
+    };
+  }).filter(function(r){ return r.opps >= 1; });
+  rows.sort(function(a,b){ return b.rate - a.rate; });
+
+  var medRate = median(rows.map(function(r){return r.rate}));
+  var allResponses = []; rows.forEach(function(r){ if (r.avgResponse !== null) allResponses.push(r.avgResponse); });
+  var medResp = median(allResponses);
+
+  var html = '<div class="kpis">';
+  html += kpi('navy',  'Users w/ Activity', rows.length);
+  html += kpi('green', 'Median Admit Rate', (medRate*100).toFixed(1) + '%');
+  html += kpi('blue',  'Median 1st-Response', medResp ? medResp.toFixed(1) + ' hrs' : '—');
+  html += kpi('amber', 'Total Admits Credited', Object.values(adminCred).reduce(function(s,v){return s+v.size;},0));
+  html += '</div>';
+
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">User Effectiveness</div><div class="card-sub">Admit rate (multi-touch) and response time vs. peer median · ' + p + '</div></div></div>';
+  html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>User</th><th class="num">Opps Touched</th><th class="num">Admits Credited</th><th class="num">Admit Rate</th><th class="num">Median Resp (hrs)</th><th class="num">vs. Peer Median</th></tr></thead><tbody>';
+  if (!rows.length) html += '<tr><td colspan="6" class="empty">No data for this period.</td></tr>';
+  rows.forEach(function(r){
+    var ratePct = (r.rate*100).toFixed(1) + '%';
+    var rateBadge = r.rate >= medRate * 1.2 ? 'b-green' : (r.rate >= medRate * 0.8 ? 'b-blue' : 'b-amber');
+    var respDisplay = r.avgResponse !== null ? r.avgResponse.toFixed(1) : '—';
+    var perf = '—';
+    if (r.avgResponse !== null && medResp > 0) {
+      var diff = (medResp - r.avgResponse) / medResp;
+      var perfCls = diff > 0 ? 'b-green' : 'b-amber';
+      perf = '<span class="badge ' + perfCls + '">' + (diff > 0 ? 'faster ' : 'slower ') + Math.abs(diff*100).toFixed(0) + '%</span>';
+    }
+    html += '<tr><td>'+esc(r.name)+'</td><td class="num">'+r.opps+'</td><td class="num">'+r.admits+'</td>'
+      + '<td class="num"><span class="badge '+rateBadge+'">'+ratePct+'</span></td>'
+      + '<td class="num">'+respDisplay+'</td>'
+      + '<td class="num">'+perf+'</td></tr>';
+  });
+  html += '</tbody></table></div></div>';
+
+  document.getElementById('tab-effectiveness').innerHTML = html;
+}
+
+// ──────────────────────────────────────────────────────────────────
+// OPPORTUNITY FLOW
+// ──────────────────────────────────────────────────────────────────
+function buildFlow() {
+  var oppsAll = filteredOpps();
+  var p = FILTERS.period;
+
+  var html = '<div class="card"><div class="card-h"><div><div class="card-title">Opportunity Flow</div><div class="card-sub">Click any row to expand the full timeline · ' + oppsAll.length + ' opportunities</div></div></div>';
+  html += '<div class="tbl-filters"><input type="text" class="tbl-search" id="flow-search" placeholder="Search by patient name, ID, stage..." oninput="renderFlowList()"></div>';
+  html += '<div id="flow-list-wrap"></div></div>';
+  document.getElementById('tab-flow').innerHTML = html;
+  renderFlowList();
+}
+
+function renderFlowList() {
+  var q = (document.getElementById('flow-search') || {}).value || '';
+  q = q.toLowerCase();
+  var list = filteredOpps().filter(function(o){
+    if (!q) return true;
+    return ((o.name||'') + ' ' + (o.id||'') + ' ' + (o.stage||'') + ' ' + (o.outcome||'')).toLowerCase().indexOf(q) >= 0;
+  });
+  // Sort by created desc
+  list.sort(function(a,b){ return (pd(b.co)||new Date(0)) - (pd(a.co)||new Date(0)); });
+
+  var html = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th></th><th>Patient</th><th>ID</th><th>Created</th><th>Outcome</th><th>Stage</th><th>LOC</th><th>Insurance</th></tr></thead><tbody>';
+  if (!list.length) html += '<tr><td colspan="8" class="empty">No opportunities match.</td></tr>';
+  list.slice(0, 200).forEach(function(o){
+    var oc = o.outcome || '';
+    var ocCls = isAdmitted(o) ? 'b-green' : (isLost(o) ? 'b-red' : 'b-blue');
+    html += '<tr style="cursor:pointer" onclick="toggleFlow(\''+esc(o.id).replace(/[&"]/g,'')+'\')"><td>&#9658;</td><td>'+esc(o.name)+'</td><td><code>'+esc(o.id)+'</code></td><td>'+(o.co?fmt(pd(o.co)):'—')+'</td><td><span class="badge '+ocCls+'">'+esc(oc)+'</span></td><td>'+esc(o.stage)+'</td><td>'+esc(o.loc)+'</td><td>'+esc(o.ins)+'</td></tr>';
+    html += '<tr id="fl-'+esc(o.id).replace(/[&"]/g,'')+'" style="display:none"><td colspan="8" style="padding:0">'+renderFlowTimeline(o.id)+'</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  if (list.length > 200) html += '<div style="padding:10px;color:var(--muted);font-size:11px">Showing 200 of ' + list.length + ' · use search to narrow</div>';
+  document.getElementById('flow-list-wrap').innerHTML = html;
+}
+
+function toggleFlow(id) {
+  var safeId = id.replace(/[&"]/g, '');
+  var el = document.getElementById('fl-' + safeId);
+  if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+
+function renderFlowTimeline(oid) {
+  var events = ACTS.filter(function(a){ return a.oid === oid; }).slice();
+  events.sort(function(a,b){ return (pd(a.date)||new Date(0)) - (pd(b.date)||new Date(0)); });
+  if (!events.length) return '<div class="tl-detail"><div class="empty">No timeline events for this opportunity.</div></div>';
+  var h = '<div class="tl-detail">';
+  events.forEach(function(e){
+    var d = pd(e.date);
+    h += '<div class="tl-event"><span class="tl-date">' + (d ? fmtDT(d) : '—') + '</span>';
+    h += '<span class="tl-type">' + esc(e.type) + '</span>';
+    if (e.wf) h += '<span class="tl-type" style="background:rgba(245,158,11,.15);color:#f59e0b">' + esc(e.wf) + '</span>';
+    h += '<span class="tl-by">' + esc(e.by || '—') + '</span>';
+    if (e.subj) h += ' <strong>' + esc(e.subj) + '</strong>';
+    if (e.text) h += '<div style="margin-top:4px;color:#374151;white-space:pre-wrap">' + esc(e.text) + '</div>';
+    h += '</div>';
+  });
+  h += '</div>';
+  return h;
+}
+
+// ──────────────────────────────────────────────────────────────────
+// ACTIVITY TRENDS
+// ──────────────────────────────────────────────────────────────────
+function buildTrends() {
+  var actsP = filteredActs();
+  var p = FILTERS.period;
+
+  // Daily counts by type
+  var daily = {}; var typeSet = {};
+  actsP.forEach(function(a){
+    var d = pd(a.date); if (!d) return;
+    var key = d.toISOString().slice(0,10);
+    if (!daily[key]) daily[key] = {};
+    daily[key][a.type] = (daily[key][a.type]||0)+1;
+    typeSet[a.type] = true;
+  });
+  var days = Object.keys(daily).sort();
+  var types = Object.keys(typeSet).sort();
+  var typeColors = { Call:'#3b82f6', Note:'#0a3d5c', Email:'#8b5cf6', Sms:'#ec4899', Task:'#3dffc0', Meeting:'#f59e0b', Workflow:'#94a3b8', Wave:'#cbd5e1' };
+
+  var html = '<div class="kpis">';
+  html += kpi('navy',  'Activities (' + p + ')', actsP.length);
+  html += kpi('blue',  'Daily Avg', days.length ? (actsP.length/days.length).toFixed(1) : '0');
+  html += kpi('teal',  'Distinct Days', days.length);
+  html += kpi('amber', 'Distinct Types', types.length);
+  html += '</div>';
+
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Daily Activity by Type</div><div class="card-sub">Stacked area · ' + p + '</div></div></div>';
+  html += '<div class="chart-wrap-tall"><canvas id="ch-daily"></canvas></div></div>';
+
+  // Hour x Day-of-week heatmap
+  var grid = []; for (var i=0;i<24;i++){ grid.push([0,0,0,0,0,0,0]); }
+  actsP.forEach(function(a){
+    var d = pd(a.date); if (!d) return;
+    var h = d.getHours(); var dow = d.getDay(); // 0=Sun
+    grid[h][dow]++;
+  });
+  var maxCell = 1; grid.forEach(function(row){ row.forEach(function(v){ if(v>maxCell) maxCell=v; }); });
+
+  var dayLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var hmHtml = '<div class="hm">';
+  hmHtml += '<div></div>';
+  dayLabels.forEach(function(l){ hmHtml += '<div class="hm-lbl" style="text-align:center;justify-content:center">'+l+'</div>'; });
+  for (var hr=6; hr<23; hr++) {  // 6am - 10pm
+    var lbl = hr === 0 ? '12am' : (hr<12?hr+'am':hr===12?'12pm':(hr-12)+'pm');
+    hmHtml += '<div class="hm-lbl">'+lbl+'</div>';
+    for (var d=0; d<7; d++) {
+      var v = grid[hr][d];
+      var alpha = maxCell > 0 ? Math.min(1, v/maxCell) : 0;
+      var color = 'rgba(10,61,92,' + (alpha * 0.85 + 0.05) + ')';
+      var txt = v > 0 ? v : '';
+      var fontColor = alpha > 0.5 ? '#fff' : 'var(--text)';
+      hmHtml += '<div class="hm-cell" style="background:'+color+';color:'+fontColor+'">'+txt+'</div>';
+    }
+  }
+  hmHtml += '</div>';
+
+  html += '<div class="g2">';
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Hour × Day Heatmap</div><div class="card-sub">When activities happen · all hours combined</div></div></div>'+hmHtml+'</div>';
+
+  // Top users time series
+  var byUserDaily = {};
+  actsP.forEach(function(a){
+    if (!a.by) return; var d = pd(a.date); if (!d) return;
+    var key = d.toISOString().slice(0,10);
+    if (!byUserDaily[a.by]) byUserDaily[a.by] = {};
+    byUserDaily[a.by][key] = (byUserDaily[a.by][key]||0)+1;
+  });
+  var topUsers = Object.keys(byUserDaily).map(function(k){ return [k, Object.values(byUserDaily[k]).reduce(function(s,v){return s+v},0)]; })
+    .sort(function(a,b){return b[1]-a[1]}).slice(0,6).map(function(x){return x[0]});
+
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Top 6 Users — Daily Activity</div><div class="card-sub">Time series · ' + p + '</div></div></div>';
+  html += '<div class="chart-wrap-tall"><canvas id="ch-users"></canvas></div></div></div>';
+
+  document.getElementById('tab-trends').innerHTML = html;
+
+  // Stacked daily chart
+  var datasets = types.map(function(t){
+    return {
+      label: t,
+      data: days.map(function(d){ return (daily[d][t]||0); }),
+      backgroundColor: typeColors[t] || '#6b7280',
+      borderColor: typeColors[t] || '#6b7280',
+      fill: true,
+    };
+  });
+  destroyChart('daily');
+  CHARTS.daily = new Chart(document.getElementById('ch-daily'), {
+    type: 'line',
+    data: { labels: days, datasets: datasets },
+    options: { responsive:true, maintainAspectRatio:false,
+      scales: { x:{ ticks:{font:{size:9},maxTicksLimit:12} }, y:{ stacked:true, beginAtZero:true } },
+      plugins: { legend:{position:'top',labels:{font:{size:11}}}, tooltip:{mode:'index',intersect:false} },
+      elements: { point:{radius:0} }
+    }
+  });
+
+  // Top users line chart
+  var userColors = ['#0a3d5c','#3dffc0','#3b82f6','#f59e0b','#10b981','#8b5cf6'];
+  var userDatasets = topUsers.map(function(u, i){
+    return {
+      label: u,
+      data: days.map(function(d){ return byUserDaily[u][d] || 0; }),
+      borderColor: userColors[i],
+      backgroundColor: userColors[i] + '33',
+      tension: 0.3, fill: false,
+    };
+  });
+  destroyChart('users');
+  CHARTS.users = new Chart(document.getElementById('ch-users'), {
+    type: 'line',
+    data: { labels: days, datasets: userDatasets },
+    options: { responsive:true, maintainAspectRatio:false,
+      scales: { x:{ ticks:{font:{size:9},maxTicksLimit:10} }, y:{ beginAtZero:true } },
+      plugins: { legend:{position:'top',labels:{font:{size:11}}} },
+      elements: { point:{radius:0} }
+    }
+  });
+}
+
+// ── Initial render ────────────────────────────────────────────────────────
+buildOverview();
+</script>
+</body>
+</html>

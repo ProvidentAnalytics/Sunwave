@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
+<title>Sunwave CRM &mdash; Provident Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#0a3d5c; --teal:#3dffc0; --teal-dim:rgba(61,255,192,0.12);
+  --bg:#f4f6f9; --white:#fff; --border:#e1e7ef;
+  --text:#0f1923; --muted:#6b7e96;
+  --red:#ef4444; --amber:#f59e0b; --blue:#3b82f6; --green:#10b981; --purple:#8b5cf6;
+  --shadow:0 1px 3px rgba(10,61,92,.07),0 4px 14px rgba(10,61,92,.04);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh}
+/* Topbar */
+.topbar{background:var(--navy);height:58px;padding:0 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 2px 16px rgba(10,61,92,.25)}
+.tb-left{display:flex;align-items:center;gap:14px}
+.tb-pill{background:var(--teal);color:var(--navy);font-family:'Space Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.08em;padding:5px 10px;border-radius:4px}
+.tb-title{color:#fff;font-size:15px;font-weight:600;line-height:1.2}
+.tb-sub{color:rgba(255,255,255,.4);font-size:11px;font-family:'Space Mono',monospace}
+.tb-right{display:flex;align-items:center;gap:12px}
+.live-pill{display:flex;align-items:center;gap:6px;background:rgba(61,255,192,.1);border:1px solid rgba(61,255,192,.25);border-radius:20px;padding:5px 12px;font-family:'Space Mono',monospace;font-size:10px;color:var(--teal)}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.sync-lbl{font-family:'Space Mono',monospace;font-size:10px;color:rgba(255,255,255,.45)}
+/* Tab nav */
+.tab-nav{background:var(--white);border-bottom:1px solid var(--border);padding:0 28px;display:flex;flex-wrap:wrap;position:sticky;top:58px;z-index:190;box-shadow:0 2px 8px rgba(10,61,92,.05);overflow-x:auto}
+.tnav{padding:12px 14px;border:none;border-bottom:3px solid transparent;background:none;font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:500;color:var(--muted);cursor:pointer;white-space:nowrap;transition:all .2s;margin-bottom:-1px}
+.tnav:hover{color:var(--navy)}
+.tnav.active{color:var(--navy);border-bottom-color:var(--teal);font-weight:700}
+/* Filters bar */
+.filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:14px 28px;background:var(--white);border-bottom:1px solid var(--border);position:sticky;top:104px;z-index:180}
+.filt-grp{display:flex;align-items:center;gap:6px;padding:0 12px;border-right:1px solid var(--border)}
+.filt-grp:last-child{border-right:none}
+.filt-lbl{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.filt-btn{padding:6px 11px;border:1px solid var(--border);background:#fff;border-radius:5px;font-family:'Space Mono',monospace;font-size:10px;font-weight:700;color:var(--muted);cursor:pointer;letter-spacing:.04em;transition:all .15s}
+.filt-btn:hover{background:rgba(10,61,92,.07);color:var(--navy)}
+.filt-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.filt-sel{padding:6px 10px;border:1px solid var(--border);background:#fff;border-radius:5px;font-family:'Space Mono',monospace;font-size:11px;color:var(--navy);outline:none}
+.filt-sel:focus{border-color:var(--navy)}
+.filt-sel[multiple]{min-height:32px;max-height:32px;overflow-y:auto}
+.filt-sel[multiple]:focus{max-height:200px}
+/* Tab panels */
+.tab-panel{display:none;padding:22px 28px}.tab-panel.active{display:block}
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:18px}
+.kpi{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--navy);border-radius:12px 12px 0 0}
+.kpi.teal::before{background:var(--teal)}.kpi.red::before{background:var(--red)}.kpi.amber::before{background:var(--amber)}.kpi.green::before{background:var(--green)}.kpi.blue::before{background:var(--blue)}.kpi.purple::before{background:var(--purple)}
+.kpi-lbl{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+.kpi-val{font-size:28px;font-weight:700;color:var(--navy);line-height:1;letter-spacing:-.03em}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:5px}
+/* Card */
+.card{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow);margin-bottom:14px}
+.card-h{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:12px}
+.card-title{font-size:13px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.04em}
+.card-sub{font-size:11px;color:var(--muted);margin-top:3px;font-weight:400}
+.card-actions{display:flex;gap:6px}
+/* Tables */
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl th{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:0 12px 9px 0;text-align:left;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff;cursor:pointer;user-select:none;white-space:nowrap;font-weight:700}
+.tbl th.sort-asc::after{content:' \25B2';color:var(--navy)}
+.tbl th.sort-desc::after{content:' \25BC';color:var(--navy)}
+.tbl td{padding:8px 12px 8px 0;border-bottom:1px solid rgba(225,231,239,.5);vertical-align:middle}
+.tbl tr:hover td{background:rgba(244,246,249,.8)}
+.tbl-wrap{overflow-x:auto;max-height:560px;overflow-y:auto}
+.tbl-wrap::-webkit-scrollbar{width:5px;height:5px}
+.tbl-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+/* Layout grids */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.g3{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:980px){.g2,.g3{grid-template-columns:1fr}}
+/* Badges */
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;font-family:'Space Mono',monospace}
+.b-amber{background:rgba(245,158,11,.15);color:var(--amber)}
+.b-red{background:rgba(239,68,68,.15);color:var(--red)}
+.b-green{background:rgba(16,185,129,.15);color:var(--green)}
+.b-blue{background:rgba(59,130,246,.15);color:var(--blue)}
+.b-muted{background:rgba(107,126,150,.15);color:var(--muted)}
+.b-purple{background:rgba(139,92,246,.15);color:var(--purple)}
+.b-teal{background:var(--teal-dim);color:var(--navy)}
+.rank-medal{font-size:14px;margin-right:4px}
+.num{text-align:right;font-variant-numeric:tabular-nums;font-family:'Space Mono',monospace}
+/* Search input */
+.tbl-search{flex:1;min-width:180px;background:var(--white);border:1px solid var(--border);border-radius:8px;padding:8px 13px;font-size:12px;color:var(--text);outline:none;font-family:'DM Sans',sans-serif}
+.tbl-search:focus{border-color:var(--navy)}
+.tbl-filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+/* Mini bar inline */
+.mbar{display:inline-block;height:8px;background:var(--bg);border-radius:4px;overflow:hidden;width:80px;vertical-align:middle;margin-right:6px}
+.mbar-fill{height:100%;background:var(--navy);border-radius:4px}
+/* Timeline expand row */
+.tl-detail{padding:14px 20px;background:#f8fafc;border-left:3px solid var(--navy);border-radius:0 6px 6px 0;margin:6px 0}
+.tl-event{padding:8px 0;border-bottom:1px dashed var(--border);font-size:12px}
+.tl-event:last-child{border-bottom:none}
+.tl-date{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);margin-right:10px}
+.tl-type{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:700;background:var(--teal-dim);color:var(--navy);margin-right:8px;font-family:'Space Mono',monospace}
+.tl-by{font-weight:600;color:var(--navy)}
+/* Heatmap */
+.hm{display:grid;grid-template-columns:60px repeat(7,1fr);gap:2px}
+.hm-lbl{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);text-align:right;padding-right:4px;display:flex;align-items:center;justify-content:flex-end}
+.hm-cell{height:18px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text);font-family:'Space Mono',monospace}
+/* Empty state */
+.empty{padding:40px 20px;text-align:center;color:var(--muted);font-size:13px;font-style:italic}
+/* Chart container */
+.chart-wrap{height:280px;position:relative}
+.chart-wrap-tall{height:360px;position:relative}
+/* Footer note */
+.footer{padding:18px 28px;color:var(--muted);font-size:11px;font-family:'Space Mono',monospace;text-align:center}
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+  <div class="tb-left">
+    <span class="tb-pill">SUNWAVE CRM</span>
+    <div>
+      <div class="tb-title">CRM &amp; Productivity</div>
+      <div class="tb-sub" id="syncLbl">loading...</div>
+    </div>
+  </div>
+  <div class="tb-right">
+    <span class="live-pill"><span class="live-dot"></span><span>LIVE</span></span>
+  </div>
+</div>
+
+<!-- Tab nav -->
+<nav class="tab-nav" id="tabs">
+  <button class="tnav active" data-tab="overview">Overview</button>
+  <button class="tnav" data-tab="pipeline">Pipeline &amp; Funnel</button>
+  <button class="tnav" data-tab="productivity">User Productivity</button>
+  <button class="tnav" data-tab="effectiveness">User Effectiveness</button>
+  <button class="tnav" data-tab="flow">Opportunity Flow</button>
+  <button class="tnav" data-tab="trends">Activity Trends</button>
+</nav>
+
+<!-- Filters -->
+<div class="filters">
+  <div class="filt-grp">
+    <span class="filt-lbl">Period</span>
+    <button class="filt-btn" data-period="7D">7D</button>
+    <button class="filt-btn active" data-period="30D">30D</button>
+    <button class="filt-btn" data-period="90D">90D</button>
+    <button class="filt-btn" data-period="YTD">YTD</button>
+    <button class="filt-btn" data-period="ALL">ALL</button>
+  </div>
+  <div class="filt-grp">
+    <span class="filt-lbl">Outcome</span>
+    <select class="filt-sel" id="outcomeSel">
+      <option value="">All</option>
+      <option>Active</option>
+      <option>Scheduled</option>
+      <option>Admitted</option>
+      <option>AdmittedLegacy</option>
+      <option>Lost</option>
+      <option>Abandoned</option>
+    </select>
+  </div>
+  <div class="filt-grp">
+    <span class="filt-lbl">User</span>
+    <select class="filt-sel" id="userSel" multiple style="min-width:170px"></select>
+  </div>
+  <div class="filt-grp">
+    <span class="filt-lbl">View</span>
+    <button class="filt-btn active" data-view="human">Human Only</button>
+    <button class="filt-btn" data-view="all">+ Workflow</button>
+  </div>
+</div>
+
+<!-- Tab panels -->
+<div id="tab-overview"      class="tab-panel active"></div>
+<div id="tab-pipeline"      class="tab-panel"></div>
+<div id="tab-productivity"  class="tab-panel"></div>
+<div id="tab-effectiveness" class="tab-panel"></div>
+<div id="tab-flow"          class="tab-panel"></div>
+<div id="tab-trends"        class="tab-panel"></div>
+
+<div class="footer" id="footer"></div>
+
+<script>
+// ── DATA — replaced by build_crm.py ────────────────────────────────────────
+var OPPS  = /*INJECT_OPPS*/null;
+var ACTS  = /*INJECT_ACTS*/null;
+var USERS = /*INJECT_USERS*/null;
+var TASKS = /*INJECT_TASKS*/null;
+var META  = /*INJECT_META*/null;
+
+// ── Filter state ──────────────────────────────────────────────────────────
+var FILTERS = { period: '30D', outcome: '', users: [], humanOnly: true };
+var CHARTS = {};
+var SORT_STATE = {};
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function pd(s) { if (!s) return null; var d = new Date(s); return isNaN(d) ? null : d; }
+function fmt(d) { if (!d) return ''; var m=(d.getMonth()+1)+''; var dd=d.getDate()+''; return (m.length<2?'0':'')+m+'/'+(dd.length<2?'0':'')+dd+'/'+d.getFullYear(); }
+function fmtDT(d) { if (!d) return ''; var t = d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true}); return fmt(d)+' '+t; }
+function esc(s) { if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function pct(n, d) { return d > 0 ? ((n/d)*100).toFixed(1)+'%' : '0%'; }
+function periodCutoff(p) {
+  var d = new Date(); d.setHours(0,0,0,0);
+  if (p === '7D') d.setDate(d.getDate()-7);
+  else if (p === '30D') d.setDate(d.getDate()-30);
+  else if (p === '90D') d.setDate(d.getDate()-90);
+  else if (p === 'YTD') d = new Date(d.getFullYear(),0,1);
+  else return null;
+  return d;
+}
+function isHuman(a) { return a.type !== 'Workflow' && a.type !== 'Wave'; }
+function inPeriod(date) { var c = periodCutoff(FILTERS.period); if (!c) return true; var d = pd(date); return d && d >= c; }
+function userMatch(name) { return !FILTERS.users.length || FILTERS.users.indexOf(name) >= 0; }
+function outcomeMatch(o) { return !FILTERS.outcome || o.outcome === FILTERS.outcome; }
+function filteredOpps() { return OPPS.filter(outcomeMatch); }
+function filteredActs() {
+  return ACTS.filter(function(a){
+    if (FILTERS.humanOnly && !isHuman(a)) return false;
+    if (!userMatch(a.by)) return false;
+    if (!inPeriod(a.date)) return false;
+    return true;
+  });
+}
+function periodOpps() { return filteredOpps().filter(function(o){ return inPeriod(o.co); }); }
+function median(arr) { if(!arr.length) return 0; var s=arr.slice().sort(function(a,b){return a-b}); var m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; }
+function destroyChart(key) { if (CHARTS[key]) { CHARTS[key].destroy(); delete CHARTS[key]; } }
+function isAdmitted(o) { return o.outcome === 'Admitted' || o.outcome === 'AdmittedLegacy'; }
+function isInPipe(o) { var s=(o.outcome||'').toLowerCase(); return s==='active'||s==='scheduled'; }
+function isLost(o) { return o.outcome === 'Lost' || o.outcome === 'Abandoned'; }
+
+// ── Tab nav ───────────────────────────────────────────────────────────────
+document.querySelectorAll('.tnav').forEach(function(b){
+  b.onclick = function() { showTab(b.dataset.tab, b); };
+});
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active')});
+  document.querySelectorAll('.tnav').forEach(function(b){b.classList.remove('active')});
+  document.getElementById('tab-'+name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  buildTab(name);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function buildTab(n){
+  if      (n === 'overview')      buildOverview();
+  else if (n === 'pipeline')      buildPipeline();
+  else if (n === 'productivity')  buildProductivity();
+  else if (n === 'effectiveness') buildEffectiveness();
+  else if (n === 'flow')          buildFlow();
+  else if (n === 'trends')        buildTrends();
+}
+
+// ── Filter handlers ───────────────────────────────────────────────────────
+document.querySelectorAll('.filt-btn[data-period]').forEach(function(b){
+  b.onclick = function() {
+    document.querySelectorAll('.filt-btn[data-period]').forEach(function(x){x.classList.remove('active')});
+    b.classList.add('active'); FILTERS.period = b.dataset.period; rebuildAll();
+  };
+});
+document.querySelectorAll('.filt-btn[data-view]').forEach(function(b){
+  b.onclick = function() {
+    document.querySelectorAll('.filt-btn[data-view]').forEach(function(x){x.classList.remove('active')});
+    b.classList.add('active'); FILTERS.humanOnly = (b.dataset.view === 'human'); rebuildAll();
+  };
+});
+document.getElementById('outcomeSel').onchange = function(e){
+  FILTERS.outcome = e.target.value; rebuildAll();
+};
+document.getElementById('userSel').onchange = function(e){
+  var sel = []; for (var i=0;i<e.target.options.length;i++) if (e.target.options[i].selected) sel.push(e.target.options[i].value);
+  FILTERS.users = sel; rebuildAll();
+};
+function rebuildAll() {
+  Object.keys(CHARTS).forEach(destroyChart);
+  var active = document.querySelector('.tnav.active');
+  if (active) buildTab(active.dataset.tab);
+}
+
+// Populate user select with activity counts
+(function() {
+  var sel = document.getElementById('userSel');
+  var counts = {};
+  ACTS.forEach(function(a){ if (a.by && isHuman(a)) counts[a.by] = (counts[a.by]||0)+1; });
+  var sorted = Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; });
+  sorted.forEach(function(n){
+    var o = document.createElement('option'); o.value = n; o.textContent = n+' ('+counts[n]+')';
+    sel.appendChild(o);
+  });
+})();
+
+// Populate sync label
+(function(){
+  if (META && META.refreshed_at) {
+    var d = new Date(META.refreshed_at);
+    document.getElementById('syncLbl').textContent = 'synced ' + d.toLocaleString();
+  }
+  document.getElementById('footer').innerHTML = META ? (META.opps_count + ' opportunities · ' + META.acts_count + ' activities · ' + META.users_count + ' users · ' + META.tasks_count + ' tasks') : '';
+})();
+
+// ──────────────────────────────────────────────────────────────────
+// OVERVIEW
+// ──────────────────────────────────────────────────────────────────
+function buildOverview() {
+  var oppsP = periodOpps();
+  var actsP = filteredActs();
+  var allFilteredOpps = filteredOpps();
+  var p = FILTERS.period;
+  var now = new Date(); now.setHours(0,0,0,0);
+
+  var total    = oppsP.length;
+  var admitted = oppsP.filter(isAdmitted).length;
+  var inPipe   = oppsP.filter(isInPipe).length;
+  var lost     = oppsP.filter(isLost).length;
+
+  var html = '';
+  html += '<div class="kpis">';
+  html += kpi('navy',  'Created (' + p + ')', total);
+  html += kpi('green', 'Admitted', admitted);
+  html += kpi('teal',  'Admit Rate', pct(admitted, total));
+  html += kpi('blue',  'In Pipeline', inPipe);
+  html += kpi('red',   'Lost / Abandoned', lost);
+  html += kpi('amber', 'Activities (' + p + ')', actsP.length);
+  html += '</div>';
+
+  // Activity Leaderboard
+  var lb = {};
+  actsP.forEach(function(a){
+    if (!a.by) return;
+    if (!lb[a.by]) lb[a.by] = { total:0, opps:new Set(), types:{} };
+    lb[a.by].total++;
+    if (a.oid) lb[a.by].opps.add(a.oid);
+    lb[a.by].types[a.type] = (lb[a.by].types[a.type]||0)+1;
+  });
+  var lbArr = Object.keys(lb).map(function(k){ return { name:k, total:lb[k].total, opps:lb[k].opps.size, types:lb[k].types }; });
+  lbArr.sort(function(a,b){ return b.total - a.total; });
+
+  // Multi-touch admit credit
+  var admittedOids = new Set(allFilteredOpps.filter(isAdmitted).filter(function(o){ return inPeriod(o.admit) || inPeriod(o.co); }).map(function(o){ return o.id; }));
+  var admitCredit = {};
+  ACTS.forEach(function(a){
+    if (FILTERS.humanOnly && !isHuman(a)) return;
+    if (!a.by || !a.oid) return;
+    if (!admittedOids.has(a.oid)) return;
+    if (!admitCredit[a.by]) admitCredit[a.by] = new Set();
+    admitCredit[a.by].add(a.oid);
+  });
+
+  html += '<div class="g3">';
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Activity Leaderboard</div><div class="card-sub">Top contributors · ' + p + '</div></div></div>';
+  html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>User</th><th class="num">Activities</th><th class="num">Opps Touched</th><th class="num">Admits Credited</th></tr></thead><tbody>';
+  if (!lbArr.length) html += '<tr><td colspan="5" class="empty">No activities in this period.</td></tr>';
+  lbArr.slice(0,15).forEach(function(u, i){
+    var medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : ''));
+    var ac = admitCredit[u.name] ? admitCredit[u.name].size : 0;
+    html += '<tr><td><span class="rank-medal">'+medal+'</span>'+(i+1)+'</td><td>'+esc(u.name)+'</td><td class="num">'+u.total+'</td><td class="num">'+u.opps+'</td><td class="num">'+ac+'</td></tr>';
+  });
+  html += '</tbody></table></div></div>';
+
+  // Recent Admissions
+  var recent = allFilteredOpps.filter(isAdmitted).slice().sort(function(a,b){
+    return (pd(b.admit)||pd(b.co)||new Date(0)) - (pd(a.admit)||pd(a.co)||new Date(0));
+  }).slice(0,12);
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Recent Admissions</div><div class="card-sub">Closer = last human activity</div></div></div>';
+  html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Patient</th><th>Admit</th><th>Closer</th></tr></thead><tbody>';
+  if (!recent.length) html += '<tr><td colspan="3" class="empty">No admissions.</td></tr>';
+  recent.forEach(function(o){
+    var oacts = ACTS.filter(function(a){ return a.oid === o.id && isHuman(a); });
+    oacts.sort(function(a,b){ return (pd(b.date)||new Date(0)) - (pd(a.date)||new Date(0)); });
+    var closer = oacts.length ? oacts[0].by : '—';
+    html += '<tr><td>'+esc(o.name)+'</td><td><span class="badge b-green">'+(o.admit?fmt(pd(o.admit)):'—')+'</span></td><td>'+esc(closer)+'</td></tr>';
+  });
+  html += '</tbody></table></div></div></div>';
+
+  // Stuck opportunities
+  var stuck = OPPS.filter(function(o){
+    if (!isInPipe(o)) return false;
+    if (!outcomeMatch(o)) return false;
+    var c = pd(o.co); if (!c) return false;
+    if ((now - c) / 86400000 < 7) return false;
+    var oacts = ACTS.filter(function(a){ return a.oid === o.id && isHuman(a); });
+    var lastDate = null;
+    oacts.forEach(function(a){ var d=pd(a.date); if(d && (!lastDate || d>lastDate)) lastDate=d; });
+    var ageDays = lastDate ? (now-lastDate)/86400000 : (now-c)/86400000;
+    if (ageDays < 7) return false;
+    o._stuck = Math.floor(ageDays);
+    o._lastTouch = lastDate ? fmt(lastDate) : '—';
+    return true;
+  }).sort(function(a,b){ return b._stuck - a._stuck; });
+
+  html += '<div class="g2">';
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Stuck Opportunities (' + stuck.length + ')</div><div class="card-sub">Active · &gt;7d no human activity · amber @14d · red @30d</div></div></div>';
+  html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Patient</th><th>Stage</th><th>Last Touch</th><th class="num">Days</th></tr></thead><tbody>';
+  if (!stuck.length) html += '<tr><td colspan="4" class="empty">No stuck opportunities.</td></tr>';
+  stuck.slice(0,30).forEach(function(o){
+    var cls = o._stuck >= 30 ? 'b-red' : (o._stuck >= 14 ? 'b-amber' : 'b-blue');
+    html += '<tr><td>'+esc(o.name)+'</td><td>'+esc(o.stage)+'</td><td>'+esc(o._lastTouch)+'</td><td class="num"><span class="badge '+cls+'">'+o._stuck+'d</span></td></tr>';
+  });
+  html += '</tbody></table></div></div>';
+
+  // Open CRM Tasks
+  var openTasks = TASKS.filter(function(t){ return t.is_open; }).slice().sort(function(a,b){
+    return (pd(a.due)||new Date(8e15)) - (pd(b.due)||new Date(8e15));
+  });
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Open CRM Tasks (' + openTasks.length + ')</div><div class="card-sub">Sorted by due date</div></div></div>';
+  html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Subject</th><th>Type</th><th>Assigned</th><th>Due</th></tr></thead><tbody>';
+  if (!openTasks.length) html += '<tr><td colspan="4" class="empty">No open tasks.</td></tr>';
+  openTasks.forEach(function(t){
+    var due = pd(t.due);
+    var overdue = due && due < now;
+    var cls = overdue ? 'b-red' : 'b-muted';
+    html += '<tr><td>'+esc(t.subject)+'</td><td>'+esc(t.task_type)+'</td><td>'+esc(t.assigned)+'</td><td><span class="badge '+cls+'">'+(due?fmt(due):'—')+(overdue?' ⚠':'')+'</span></td></tr>';
+  });
+  html += '</tbody></table></div></div></div>';
+
+  document.getElementById('tab-overview').innerHTML = html;
+}
+
+function kpi(color, lbl, val, sub) {
+  var s = sub ? '<div class="kpi-sub">' + esc(sub) + '</div>' : '';
+  return '<div class="kpi ' + color + '"><div class="kpi-lbl">' + esc(lbl) + '</div><div class="kpi-val">' + esc(val) + '</div>' + s + '</div>';
+}
+
+// ──────────────────────────────────────────────────────────────────
+// PIPELINE & FUNNEL
+// ──────────────────────────────────────────────────────────────────
+function buildPipeline() {
+  var oppsP = periodOpps();
+  var p = FILTERS.period;
+
+  // Funnel: Created → Active/Sched → Admitted, with lost/abandoned breakouts
+  var counts = {
+    created: oppsP.length,
+    active: oppsP.filter(function(o){ return o.outcome==='Active'; }).length,
+    scheduled: oppsP.filter(function(o){ return o.outcome==='Scheduled'; }).length,
+    admitted: oppsP.filter(isAdmitted).length,
+    lost: oppsP.filter(function(o){ return o.outcome==='Lost'; }).length,
+    abandoned: oppsP.filter(function(o){ return o.outcome==='Abandoned'; }).length,
+  };
+
+  var html = '';
+  html += '<div class="kpis">';
+  html += kpi('navy',  'Created', counts.created);
+  html += kpi('blue',  'Active', counts.active);
+  html += kpi('purple','Scheduled', counts.scheduled);
+  html += kpi('green', 'Admitted', counts.admitted, pct(counts.admitted, counts.created) + ' of created');
+  html += kpi('amber', 'Lost', counts.lost);
+  html += kpi('red',   'Abandoned', counts.abandoned);
+  html += '</div>';
+
+  html += '<div class="g2">';
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Stage Distribution</div><div class="card-sub">By current stage · ' + p + '</div></div></div>';
+  html += '<div class="chart-wrap"><canvas id="ch-stage"></canvas></div></div>';
+
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Outcome Distribution</div><div class="card-sub">Conversion mix · ' + p + '</div></div></div>';
+  html += '<div class="chart-wrap"><canvas id="ch-outcome"></canvas></div></div></div>';
+
+  // Lost / Abandoned reasons
+  var lostMap = {}, abMap = {};
+  oppsP.forEach(function(o){
+    if (o.outcome === 'Lost' && o.lost_r) lostMap[o.lost_r] = (lostMap[o.lost_r]||0)+1;
+    if (o.outcome === 'Abandoned' && o.aband_r) abMap[o.aband_r] = (abMap[o.aband_r]||0)+1;
+  });
+  html += '<div class="g2">';
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Lost Reasons</div><div class="card-sub">Why opportunities are lost · ' + p + '</div></div></div>';
+  html += renderReasonTable(lostMap, counts.lost);
+  html += '</div>';
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Abandoned Reasons</div><div class="card-sub">Why opportunities are abandoned · ' + p + '</div></div></div>';
+  html += renderReasonTable(abMap, counts.abandoned);
+  html += '</div></div>';
+
+  // Time to admit distribution (admit_date - created_on)
+  var ttaDays = oppsP.filter(isAdmitted).map(function(o){
+    var c = pd(o.co), a = pd(o.admit);
+    if (!c || !a) return null;
+    return Math.max(0, Math.floor((a-c)/86400000));
+  }).filter(function(d){ return d !== null; });
+
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Time to Admit Distribution</div><div class="card-sub">Days from opp creation to admission · ' + p + ' · n=' + ttaDays.length + '</div></div></div>';
+  html += '<div class="chart-wrap"><canvas id="ch-tta"></canvas></div>';
+  if (ttaDays.length) {
+    var avg = (ttaDays.reduce(function(s,v){return s+v;},0) / ttaDays.length).toFixed(1);
+    var med = median(ttaDays).toFixed(1);
+    html += '<div style="margin-top:10px;font-size:12px;color:var(--muted)">Average: <strong style="color:var(--navy)">' + avg + ' days</strong> · Median: <strong style="color:var(--navy)">' + med + ' days</strong></div>';
+  }
+  html += '</div>';
+
+  document.getElementById('tab-pipeline').innerHTML = html;
+
+  // Charts
+  var stageData = {};
+  oppsP.forEach(function(o){ var s = o.stage || '(none)'; stageData[s] = (stageData[s]||0)+1; });
+  var stageLabels = Object.keys(stageData).sort(function(a,b){return stageData[b]-stageData[a]});
+  var stageVals = stageLabels.map(function(k){ return stageData[k]; });
+  destroyChart('stage');
+  CHARTS.stage = new Chart(document.getElementById('ch-stage'), {
+    type:'bar',
+    data:{ labels:stageLabels, datasets:[{ label:'Opps', data:stageVals, backgroundColor:'#0a3d5c', borderRadius:4 }] },
+    options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      scales:{ x:{ ticks:{font:{size:10}} }, y:{ ticks:{font:{size:11}} } },
+      plugins:{ legend:{display:false} } }
+  });
+
+  var outLabels = ['Active','Scheduled','Admitted','AdmittedLegacy','Lost','Abandoned'];
+  var outVals = outLabels.map(function(l){ return oppsP.filter(function(o){return o.outcome===l;}).length; });
+  var outColors = ['#3b82f6','#8b5cf6','#10b981','#3dffc0','#f59e0b','#ef4444'];
+  destroyChart('outcome');
+  CHARTS.outcome = new Chart(document.getElementById('ch-outcome'), {
+    type:'doughnut',
+    data:{ labels:outLabels, datasets:[{ data:outVals, backgroundColor:outColors }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:'right',labels:{font:{size:11}}} } }
+  });
+
+  // TTA histogram
+  var bins = [0,0,0,0,0,0,0]; // 0-1, 2-3, 4-7, 8-14, 15-30, 31-60, 60+
+  ttaDays.forEach(function(d){
+    if (d <= 1) bins[0]++;
+    else if (d <= 3) bins[1]++;
+    else if (d <= 7) bins[2]++;
+    else if (d <= 14) bins[3]++;
+    else if (d <= 30) bins[4]++;
+    else if (d <= 60) bins[5]++;
+    else bins[6]++;
+  });
+  destroyChart('tta');
+  CHARTS.tta = new Chart(document.getElementById('ch-tta'), {
+    type:'bar',
+    data:{ labels:['0-1d','2-3d','4-7d','8-14d','15-30d','31-60d','60d+'],
+           datasets:[{ label:'Opps', data:bins, backgroundColor:'#3dffc0', borderColor:'#0a3d5c', borderWidth:1, borderRadius:4 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} } }
+  });
+}
+
+function renderReasonTable(map, total) {
+  var entries = Object.keys(map).map(function(k){return [k,map[k]];}).sort(function(a,b){return b[1]-a[1]});
+  if (!entries.length) return '<div class="empty">No data for this period.</div>';
+  var h = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Reason</th><th class="num">Count</th><th class="num">%</th></tr></thead><tbody>';
+  entries.forEach(function(e){
+    h += '<tr><td>'+esc(e[0])+'</td><td class="num">'+e[1]+'</td><td class="num">'+pct(e[1], total)+'</td></tr>';
+  });
+  h += '</tbody></table></div>';
+  return h;
+}
+
+// ──────────────────────────────────────────────────────────────────
+// USER PRODUCTIVITY
+// ──────────────────────────────────────────────────────────────────
+function buildProductivity() {
+  var actsP = filteredActs();
+  var p = FILTERS.period;
+  var byUser = {};
+  actsP.forEach(function(a){
+    if (!a.by) return;
+    if (!byUser[a.by]) byUser[a.by] = { total:0, types:{}, opps:new Set(), days:new Set() };
+    var u = byUser[a.by];
+    u.total++;
+    u.types[a.type] = (u.types[a.type]||0)+1;
+    if (a.oid) u.opps.add(a.oid);
+    var d = pd(a.date); if (d) u.days.add(d.toISOString().slice(0,10));
+  });
+  var rows = Object.keys(byUser).map(function(k){
+    var u = byUser[k];
+    return {
+      name: k, total: u.total,
+      call: u.types['Call']||0, note: u.types['Note']||0,
+      email: (u.types['Email']||0) + (u.types['Sms']||0),
+      task: u.types['Task']||0,
+      meeting: u.types['Meeting']||0,
+      opps: u.opps.size, days: u.days.size,
+    };
+  });
+  rows.sort(function(a,b){ return b.total - a.total; });
+  var medTotal = median(rows.map(function(r){return r.total}));
+  var maxTotal = Math.max.apply(null, rows.map(function(r){return r.total}).concat([1]));
+
+  var html = '<div class="kpis">';
+  html += kpi('navy',  'Active Users (' + p + ')', rows.length);
+  html += kpi('blue',  'Total Activities', actsP.length);
+  html += kpi('teal',  'Median per User', Math.round(medTotal));
+  html += kpi('amber', 'Workflow Excluded', FILTERS.humanOnly ? 'YES' : 'NO');
+  html += '</div>';
+
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">User Productivity Table</div><div class="card-sub">Click any column header to sort · ' + p + ' · ' + (FILTERS.humanOnly ? 'Human only' : 'All activity') + '</div></div></div>';
+  html += '<div class="tbl-wrap"><table class="tbl" id="prod-tbl"><thead><tr>';
+  ['User','Total','Calls','Notes','Email/SMS','Tasks','Meetings','Opps','Days Active','vs. Median'].forEach(function(h,i){
+    html += '<th data-col="'+i+'">'+h+'</th>';
+  });
+  html += '</tr></thead><tbody>';
+  if (!rows.length) html += '<tr><td colspan="10" class="empty">No activity in this period.</td></tr>';
+  rows.forEach(function(r){
+    var pctOfMax = Math.min(100, Math.round((r.total/maxTotal)*100));
+    var bar = '<div class="mbar"><div class="mbar-fill" style="width:'+pctOfMax+'%"></div></div>';
+    html += '<tr><td>'+esc(r.name)+'</td><td class="num"><strong>'+r.total+'</strong></td>'
+      + '<td class="num">'+r.call+'</td>'
+      + '<td class="num">'+r.note+'</td>'
+      + '<td class="num">'+r.email+'</td>'
+      + '<td class="num">'+r.task+'</td>'
+      + '<td class="num">'+r.meeting+'</td>'
+      + '<td class="num">'+r.opps+'</td>'
+      + '<td class="num">'+r.days+'</td>'
+      + '<td class="num">'+bar+(medTotal>0?Math.round(r.total/medTotal*100)+'%':'—')+'</td></tr>';
+  });
+  html += '</tbody></table></div></div>';
+
+  // Activity mix chart (top 12)
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Activity Mix by User (Top 12)</div><div class="card-sub">Stacked by activity type</div></div></div>';
+  html += '<div class="chart-wrap-tall"><canvas id="ch-mix"></canvas></div></div>';
+
+  document.getElementById('tab-productivity').innerHTML = html;
+
+  // Sort handlers
+  var tbl = document.getElementById('prod-tbl');
+  tbl.querySelectorAll('th').forEach(function(th, i){
+    th.onclick = function() { sortProdTable(i); };
+  });
+
+  // Stacked bar chart
+  var top12 = rows.slice(0, 12);
+  destroyChart('mix');
+  CHARTS.mix = new Chart(document.getElementById('ch-mix'), {
+    type:'bar',
+    data: {
+      labels: top12.map(function(r){return r.name}),
+      datasets: [
+        { label:'Calls',     data: top12.map(function(r){return r.call}),    backgroundColor:'#3b82f6' },
+        { label:'Notes',     data: top12.map(function(r){return r.note}),    backgroundColor:'#0a3d5c' },
+        { label:'Email/SMS', data: top12.map(function(r){return r.email}),   backgroundColor:'#8b5cf6' },
+        { label:'Tasks',     data: top12.map(function(r){return r.task}),    backgroundColor:'#3dffc0' },
+        { label:'Meetings',  data: top12.map(function(r){return r.meeting}), backgroundColor:'#f59e0b' },
+      ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      scales:{ x:{ stacked:true }, y:{ stacked:true, ticks:{font:{size:11}} } },
+      plugins:{ legend:{position:'top',labels:{font:{size:11}}} }
+    }
+  });
+}
+
+function sortProdTable(colIdx) {
+  var tbl = document.getElementById('prod-tbl');
+  var tbody = tbl.querySelector('tbody');
+  var rows = Array.from(tbody.querySelectorAll('tr')).filter(function(r){return r.children.length>1;});
+  var headers = tbl.querySelectorAll('th');
+  headers.forEach(function(h){ h.classList.remove('sort-asc','sort-desc'); });
+  var asc = SORT_STATE['prod'+colIdx] !== 'asc';
+  SORT_STATE['prod'+colIdx] = asc ? 'asc' : 'desc';
+  headers[colIdx].classList.add(asc ? 'sort-asc' : 'sort-desc');
+  rows.sort(function(a, b){
+    var av = a.children[colIdx].textContent.trim();
+    var bv = b.children[colIdx].textContent.trim();
+    var an = parseFloat(av.replace(/[%,]/g,'')); var bn = parseFloat(bv.replace(/[%,]/g,''));
+    if (!isNaN(an) && !isNaN(bn)) return asc ? an - bn : bn - an;
+    return asc ? av.localeCompare(bv) : bv.localeCompare(av);
+  });
+  rows.forEach(function(r){ tbody.appendChild(r); });
+}
+
+// ──────────────────────────────────────────────────────────────────
+// USER EFFECTIVENESS
+// ──────────────────────────────────────────────────────────────────
+function buildEffectiveness() {
+  var actsP = filteredActs();
+  var p = FILTERS.period;
+
+  // For each user: opps touched (period), admits credited, response time
+  var byUser = {};
+  actsP.forEach(function(a){
+    if (!a.by) return;
+    if (!byUser[a.by]) byUser[a.by] = { opps:new Set(), responses:[] };
+    if (a.oid) byUser[a.by].opps.add(a.oid);
+  });
+
+  // Response time = time from opp creation → first activity by THIS user
+  var oppById = {};
+  OPPS.forEach(function(o){ oppById[o.id] = o; });
+
+  // Group acts by oid+user, find earliest
+  var firstActByUserOpp = {};
+  actsP.forEach(function(a){
+    if (!a.by || !a.oid) return;
+    var key = a.by + '|' + a.oid;
+    var d = pd(a.date); if (!d) return;
+    if (!firstActByUserOpp[key] || d < firstActByUserOpp[key]) firstActByUserOpp[key] = d;
+  });
+  Object.keys(firstActByUserOpp).forEach(function(key){
+    var parts = key.split('|'); var name = parts[0], oid = parts[1];
+    var opp = oppById[oid]; if (!opp) return;
+    var co = pd(opp.co); if (!co) return;
+    var firstAct = firstActByUserOpp[key];
+    var hrs = (firstAct - co) / 3600000;
+    if (hrs < 0) return;
+    if (!byUser[name]) byUser[name] = { opps:new Set(), responses:[] };
+    byUser[name].responses.push(hrs);
+  });
+
+  // Multi-touch admit credit (period)
+  var admittedOids = new Set(filteredOpps().filter(isAdmitted).filter(function(o){ return inPeriod(o.admit) || inPeriod(o.co); }).map(function(o){return o.id}));
+  var adminCred = {};
+  ACTS.forEach(function(a){
+    if (FILTERS.humanOnly && !isHuman(a)) return;
+    if (!a.by || !a.oid) return;
+    if (!admittedOids.has(a.oid)) return;
+    if (!adminCred[a.by]) adminCred[a.by] = new Set();
+    adminCred[a.by].add(a.oid);
+  });
+
+  var rows = Object.keys(byUser).map(function(name){
+    var u = byUser[name];
+    var oppsTouched = u.opps.size;
+    var admits = adminCred[name] ? adminCred[name].size : 0;
+    var avgResponse = u.responses.length ? u.responses.reduce(function(s,v){return s+v},0) / u.responses.length : null;
+    return {
+      name: name, opps: oppsTouched, admits: admits,
+      rate: oppsTouched > 0 ? admits / oppsTouched : 0,
+      avgResponse: avgResponse, n: u.responses.length,
+    };
+  }).filter(function(r){ return r.opps >= 1; });
+  rows.sort(function(a,b){ return b.rate - a.rate; });
+
+  var medRate = median(rows.map(function(r){return r.rate}));
+  var allResponses = []; rows.forEach(function(r){ if (r.avgResponse !== null) allResponses.push(r.avgResponse); });
+  var medResp = median(allResponses);
+
+  var html = '<div class="kpis">';
+  html += kpi('navy',  'Users w/ Activity', rows.length);
+  html += kpi('green', 'Median Admit Rate', (medRate*100).toFixed(1) + '%');
+  html += kpi('blue',  'Median 1st-Response', medResp ? medResp.toFixed(1) + ' hrs' : '—');
+  html += kpi('amber', 'Total Admits Credited', Object.values(adminCred).reduce(function(s,v){return s+v.size;},0));
+  html += '</div>';
+
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">User Effectiveness</div><div class="card-sub">Admit rate (multi-touch) and response time vs. peer median · ' + p + '</div></div></div>';
+  html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>User</th><th class="num">Opps Touched</th><th class="num">Admits Credited</th><th class="num">Admit Rate</th><th class="num">Median Resp (hrs)</th><th class="num">vs. Peer Median</th></tr></thead><tbody>';
+  if (!rows.length) html += '<tr><td colspan="6" class="empty">No data for this period.</td></tr>';
+  rows.forEach(function(r){
+    var ratePct = (r.rate*100).toFixed(1) + '%';
+    var rateBadge = r.rate >= medRate * 1.2 ? 'b-green' : (r.rate >= medRate * 0.8 ? 'b-blue' : 'b-amber');
+    var respDisplay = r.avgResponse !== null ? r.avgResponse.toFixed(1) : '—';
+    var perf = '—';
+    if (r.avgResponse !== null && medResp > 0) {
+      var diff = (medResp - r.avgResponse) / medResp;
+      var perfCls = diff > 0 ? 'b-green' : 'b-amber';
+      perf = '<span class="badge ' + perfCls + '">' + (diff > 0 ? 'faster ' : 'slower ') + Math.abs(diff*100).toFixed(0) + '%</span>';
+    }
+    html += '<tr><td>'+esc(r.name)+'</td><td class="num">'+r.opps+'</td><td class="num">'+r.admits+'</td>'
+      + '<td class="num"><span class="badge '+rateBadge+'">'+ratePct+'</span></td>'
+      + '<td class="num">'+respDisplay+'</td>'
+      + '<td class="num">'+perf+'</td></tr>';
+  });
+  html += '</tbody></table></div></div>';
+
+  document.getElementById('tab-effectiveness').innerHTML = html;
+}
+
+// ──────────────────────────────────────────────────────────────────
+// OPPORTUNITY FLOW
+// ──────────────────────────────────────────────────────────────────
+function buildFlow() {
+  var oppsAll = filteredOpps();
+  var p = FILTERS.period;
+
+  var html = '<div class="card"><div class="card-h"><div><div class="card-title">Opportunity Flow</div><div class="card-sub">Click any row to expand the full timeline · ' + oppsAll.length + ' opportunities</div></div></div>';
+  html += '<div class="tbl-filters"><input type="text" class="tbl-search" id="flow-search" placeholder="Search by patient name, ID, stage..." oninput="renderFlowList()"></div>';
+  html += '<div id="flow-list-wrap"></div></div>';
+  document.getElementById('tab-flow').innerHTML = html;
+  renderFlowList();
+}
+
+function renderFlowList() {
+  var q = (document.getElementById('flow-search') || {}).value || '';
+  q = q.toLowerCase();
+  var list = filteredOpps().filter(function(o){
+    if (!q) return true;
+    return ((o.name||'') + ' ' + (o.id||'') + ' ' + (o.stage||'') + ' ' + (o.outcome||'')).toLowerCase().indexOf(q) >= 0;
+  });
+  // Sort by created desc
+  list.sort(function(a,b){ return (pd(b.co)||new Date(0)) - (pd(a.co)||new Date(0)); });
+
+  var html = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th></th><th>Patient</th><th>ID</th><th>Created</th><th>Outcome</th><th>Stage</th><th>LOC</th><th>Insurance</th></tr></thead><tbody>';
+  if (!list.length) html += '<tr><td colspan="8" class="empty">No opportunities match.</td></tr>';
+  list.slice(0, 200).forEach(function(o){
+    var oc = o.outcome || '';
+    var ocCls = isAdmitted(o) ? 'b-green' : (isLost(o) ? 'b-red' : 'b-blue');
+    html += '<tr style="cursor:pointer" onclick="toggleFlow(\''+esc(o.id).replace(/[&"]/g,'')+'\')"><td>&#9658;</td><td>'+esc(o.name)+'</td><td><code>'+esc(o.id)+'</code></td><td>'+(o.co?fmt(pd(o.co)):'—')+'</td><td><span class="badge '+ocCls+'">'+esc(oc)+'</span></td><td>'+esc(o.stage)+'</td><td>'+esc(o.loc)+'</td><td>'+esc(o.ins)+'</td></tr>';
+    html += '<tr id="fl-'+esc(o.id).replace(/[&"]/g,'')+'" style="display:none"><td colspan="8" style="padding:0">'+renderFlowTimeline(o.id)+'</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  if (list.length > 200) html += '<div style="padding:10px;color:var(--muted);font-size:11px">Showing 200 of ' + list.length + ' · use search to narrow</div>';
+  document.getElementById('flow-list-wrap').innerHTML = html;
+}
+
+function toggleFlow(id) {
+  var safeId = id.replace(/[&"]/g, '');
+  var el = document.getElementById('fl-' + safeId);
+  if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+
+function renderFlowTimeline(oid) {
+  var events = ACTS.filter(function(a){ return a.oid === oid; }).slice();
+  events.sort(function(a,b){ return (pd(a.date)||new Date(0)) - (pd(b.date)||new Date(0)); });
+  if (!events.length) return '<div class="tl-detail"><div class="empty">No timeline events for this opportunity.</div></div>';
+  var h = '<div class="tl-detail">';
+  events.forEach(function(e){
+    var d = pd(e.date);
+    h += '<div class="tl-event"><span class="tl-date">' + (d ? fmtDT(d) : '—') + '</span>';
+    h += '<span class="tl-type">' + esc(e.type) + '</span>';
+    if (e.wf) h += '<span class="tl-type" style="background:rgba(245,158,11,.15);color:#f59e0b">' + esc(e.wf) + '</span>';
+    h += '<span class="tl-by">' + esc(e.by || '—') + '</span>';
+    if (e.subj) h += ' <strong>' + esc(e.subj) + '</strong>';
+    if (e.text) h += '<div style="margin-top:4px;color:#374151;white-space:pre-wrap">' + esc(e.text) + '</div>';
+    h += '</div>';
+  });
+  h += '</div>';
+  return h;
+}
+
+// ──────────────────────────────────────────────────────────────────
+// ACTIVITY TRENDS
+// ──────────────────────────────────────────────────────────────────
+function buildTrends() {
+  var actsP = filteredActs();
+  var p = FILTERS.period;
+
+  // Daily counts by type
+  var daily = {}; var typeSet = {};
+  actsP.forEach(function(a){
+    var d = pd(a.date); if (!d) return;
+    var key = d.toISOString().slice(0,10);
+    if (!daily[key]) daily[key] = {};
+    daily[key][a.type] = (daily[key][a.type]||0)+1;
+    typeSet[a.type] = true;
+  });
+  var days = Object.keys(daily).sort();
+  var types = Object.keys(typeSet).sort();
+  var typeColors = { Call:'#3b82f6', Note:'#0a3d5c', Email:'#8b5cf6', Sms:'#ec4899', Task:'#3dffc0', Meeting:'#f59e0b', Workflow:'#94a3b8', Wave:'#cbd5e1' };
+
+  var html = '<div class="kpis">';
+  html += kpi('navy',  'Activities (' + p + ')', actsP.length);
+  html += kpi('blue',  'Daily Avg', days.length ? (actsP.length/days.length).toFixed(1) : '0');
+  html += kpi('teal',  'Distinct Days', days.length);
+  html += kpi('amber', 'Distinct Types', types.length);
+  html += '</div>';
+
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Daily Activity by Type</div><div class="card-sub">Stacked area · ' + p + '</div></div></div>';
+  html += '<div class="chart-wrap-tall"><canvas id="ch-daily"></canvas></div></div>';
+
+  // Hour x Day-of-week heatmap
+  var grid = []; for (var i=0;i<24;i++){ grid.push([0,0,0,0,0,0,0]); }
+  actsP.forEach(function(a){
+    var d = pd(a.date); if (!d) return;
+    var h = d.getHours(); var dow = d.getDay(); // 0=Sun
+    grid[h][dow]++;
+  });
+  var maxCell = 1; grid.forEach(function(row){ row.forEach(function(v){ if(v>maxCell) maxCell=v; }); });
+
+  var dayLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var hmHtml = '<div class="hm">';
+  hmHtml += '<div></div>';
+  dayLabels.forEach(function(l){ hmHtml += '<div class="hm-lbl" style="text-align:center;justify-content:center">'+l+'</div>'; });
+  for (var hr=6; hr<23; hr++) {  // 6am - 10pm
+    var lbl = hr === 0 ? '12am' : (hr<12?hr+'am':hr===12?'12pm':(hr-12)+'pm');
+    hmHtml += '<div class="hm-lbl">'+lbl+'</div>';
+    for (var d=0; d<7; d++) {
+      var v = grid[hr][d];
+      var alpha = maxCell > 0 ? Math.min(1, v/maxCell) : 0;
+      var color = 'rgba(10,61,92,' + (alpha * 0.85 + 0.05) + ')';
+      var txt = v > 0 ? v : '';
+      var fontColor = alpha > 0.5 ? '#fff' : 'var(--text)';
+      hmHtml += '<div class="hm-cell" style="background:'+color+';color:'+fontColor+'">'+txt+'</div>';
+    }
+  }
+  hmHtml += '</div>';
+
+  html += '<div class="g2">';
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Hour × Day Heatmap</div><div class="card-sub">When activities happen · all hours combined</div></div></div>'+hmHtml+'</div>';
+
+  // Top users time series
+  var byUserDaily = {};
+  actsP.forEach(function(a){
+    if (!a.by) return; var d = pd(a.date); if (!d) return;
+    var key = d.toISOString().slice(0,10);
+    if (!byUserDaily[a.by]) byUserDaily[a.by] = {};
+    byUserDaily[a.by][key] = (byUserDaily[a.by][key]||0)+1;
+  });
+  var topUsers = Object.keys(byUserDaily).map(function(k){ return [k, Object.values(byUserDaily[k]).reduce(function(s,v){return s+v},0)]; })
+    .sort(function(a,b){return b[1]-a[1]}).slice(0,6).map(function(x){return x[0]});
+
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Top 6 Users — Daily Activity</div><div class="card-sub">Time series · ' + p + '</div></div></div>';
+  html += '<div class="chart-wrap-tall"><canvas id="ch-users"></canvas></div></div></div>';
+
+  document.getElementById('tab-trends').innerHTML = html;
+
+  // Stacked daily chart
+  var datasets = types.map(function(t){
+    return {
+      label: t,
+      data: days.map(function(d){ return (daily[d][t]||0); }),
+      backgroundColor: typeColors[t] || '#6b7280',
+      borderColor: typeColors[t] || '#6b7280',
+      fill: true,
+    };
+  });
+  destroyChart('daily');
+  CHARTS.daily = new Chart(document.getElementById('ch-daily'), {
+    type: 'line',
+    data: { labels: days, datasets: datasets },
+    options: { responsive:true, maintainAspectRatio:false,
+      scales: { x:{ ticks:{font:{size:9},maxTicksLimit:12} }, y:{ stacked:true, beginAtZero:true } },
+      plugins: { legend:{position:'top',labels:{font:{size:11}}}, tooltip:{mode:'index',intersect:false} },
+      elements: { point:{radius:0} }
+    }
+  });
+
+  // Top users line chart
+  var userColors = ['#0a3d5c','#3dffc0','#3b82f6','#f59e0b','#10b981','#8b5cf6'];
+  var userDatasets = topUsers.map(function(u, i){
+    return {
+      label: u,
+      data: days.map(function(d){ return byUserDaily[u][d] || 0; }),
+      borderColor: userColors[i],
+      backgroundColor: userColors[i] + '33',
+      tension: 0.3, fill: false,
+    };
+  });
+  destroyChart('users');
+  CHARTS.users = new Chart(document.getElementById('ch-users'), {
+    type: 'line',
+    data: { labels: days, datasets: userDatasets },
+    options: { responsive:true, maintainAspectRatio:false,
+      scales: { x:{ ticks:{font:{size:9},maxTicksLimit:10} }, y:{ beginAtZero:true } },
+      plugins: { legend:{position:'top',labels:{font:{size:11}}} },
+      elements: { point:{radius:0} }
+    }
+  });
+}
+
+// ── Initial render ────────────────────────────────────────────────────────
+buildOverview();
+</script>
+</body>
+</html>

@@ -1,15 +1,14 @@
 name: Refresh Sunwave Dashboard
 
 on:
-  # Schedule disabled to conserve Actions minutes. Re-enable by uncommenting
-  # one of the cron lines below. Manual trigger always available via the
-  # Actions tab → "Run workflow".
+  # Hourly auto-refresh. Builds main dashboard AND crm/index.html.
+  # Edit the cron to change cadence:
   #   '*/15 * * * *'  = every 15 minutes
-  #   '0 * * * *'     = top of every hour
+  #   '0 * * * *'     = top of every hour  (current)
   #   '0 */4 * * *'   = every 4 hours
   #   '0 6 * * *'     = once daily at 06:00 UTC
-  # schedule:
-  #   - cron: '0 6 * * *'
+  schedule:
+    - cron: '0 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -40,14 +39,17 @@ jobs:
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
         run: python fetch_excel.py
 
-      - name: Build dashboard
+      - name: Build main dashboard
         run: python build_combined.py
+
+      - name: Build CRM dashboard
+        run: python build_crm.py
 
       - name: Commit and push if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html Sunwave_Dashboard.html
+          git add index.html Sunwave_Dashboard.html crm/index.html
           if git diff --cached --quiet; then
             echo "No changes to dashboard; skipping commit."
           else
