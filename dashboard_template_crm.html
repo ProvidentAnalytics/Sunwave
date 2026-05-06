@@ -6,6 +6,8 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
 <title>Sunwave CRM &mdash; Provident Analytics</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"></script>
+<script>if(!window.msal){document.write('<script src="https://unpkg.com/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"><\/script>');}</script>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -111,9 +113,50 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .chart-wrap-tall{height:360px;position:relative}
 /* Footer note */
 .footer{padding:18px 28px;color:var(--muted);font-size:11px;font-family:'Space Mono',monospace;text-align:center}
+/* Sign-in overlay */
+#signin-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#0a3d5c 0%,#1e5e85 100%);display:flex;align-items:center;justify-content:center;z-index:9999;color:#fff;font-family:'DM Sans',sans-serif}
+.signin-card{background:rgba(255,255,255,.06);padding:40px 44px;border-radius:14px;max-width:440px;width:90%;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,.4);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.08)}
+.signin-card .pill{background:var(--teal);color:var(--navy);font-family:'Space Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 12px;border-radius:4px;display:inline-block;margin-bottom:14px}
+.signin-card h1{font-size:24px;font-weight:700;margin-bottom:8px;color:#fff}
+.signin-card p{font-size:13px;opacity:.85;margin-bottom:22px;line-height:1.5}
+.signin-card small{display:block;margin-top:18px;font-size:11px;opacity:.55;font-family:'Space Mono',monospace}
+.signin-btn{padding:13px 26px;background:#fff;color:var(--navy);border:none;border-radius:8px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:10px;transition:all .2s;box-shadow:0 6px 16px rgba(0,0,0,.25)}
+.signin-btn:hover{background:var(--teal);transform:translateY(-1px);box-shadow:0 10px 22px rgba(0,0,0,.35)}
+.signin-btn:active{transform:translateY(1px)}
+.ms-logo{display:inline-grid;grid-template:1fr 1fr / 1fr 1fr;gap:1px;width:18px;height:18px}
+.ms-logo span{display:block}
+.ms-logo span:nth-child(1){background:#f25022}.ms-logo span:nth-child(2){background:#7fba00}
+.ms-logo span:nth-child(3){background:#00a4ef}.ms-logo span:nth-child(4){background:#ffb900}
+.signin-error{margin-top:14px;padding:12px 14px;background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.4);border-radius:6px;color:#fecaca;font-size:12px;text-align:left;display:none}
+.signin-error.show{display:block}
+.signin-spin{width:36px;height:36px;border:4px solid rgba(255,255,255,.18);border-top-color:#fff;border-radius:50%;animation:sgspin 1s linear infinite;margin:0 auto 14px}
+@keyframes sgspin{to{transform:rotate(360deg)}}
+/* User badge in topbar */
+.tb-user{display:flex;align-items:center;gap:8px;padding:5px 10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:20px;color:#fff;font-size:11.5px}
+.tb-user-avatar{width:24px;height:24px;border-radius:50%;background:var(--teal);color:var(--navy);font-family:'Space Mono',monospace;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.tb-user-name{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tb-signout{background:none;border:none;color:rgba(255,255,255,.55);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;letter-spacing:.04em;text-transform:uppercase;padding:4px 8px;border-radius:4px;font-weight:700}
+.tb-signout:hover{color:#fff;background:rgba(255,255,255,.08)}
+/* Hide whole app until signed in */
+body.locked > *:not(#signin-overlay){visibility:hidden}
 </style>
 </head>
-<body>
+<body class="locked">
+
+<!-- Sign-in overlay (shown until authenticated to org tenant) -->
+<div id="signin-overlay">
+  <div class="signin-card" id="signinCard">
+    <span class="pill">SUNWAVE CRM</span>
+    <h1>Provident Analytics</h1>
+    <p>Sign in with your organization Microsoft 365 account to access the CRM &amp; Productivity dashboard.</p>
+    <button class="signin-btn" id="signinBtn">
+      <span class="ms-logo"><span></span><span></span><span></span><span></span></span>
+      <span>Sign in with Microsoft</span>
+    </button>
+    <div class="signin-error" id="signinErr"></div>
+    <small>Restricted to <strong>@gshealthcarellc.com</strong> &amp; <strong>@providenthcc.com</strong> tenant accounts.</small>
+  </div>
+</div>
 
 <!-- Topbar -->
 <div class="topbar">
@@ -126,6 +169,11 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
   </div>
   <div class="tb-right">
     <span class="live-pill"><span class="live-dot"></span><span>LIVE</span></span>
+    <div class="tb-user" id="tbUser" style="display:none">
+      <div class="tb-user-avatar" id="tbAvatar">--</div>
+      <div class="tb-user-name" id="tbName">user</div>
+      <button class="tb-signout" onclick="signOut()" title="Sign out">Sign Out</button>
+    </div>
   </div>
 </div>
 
@@ -183,6 +231,135 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 <div class="footer" id="footer"></div>
 
 <script>
+// ── AUTH — Microsoft sign-in (single-tenant) ───────────────────────────────
+// Restricts to your Provident / GS Healthcare Azure AD tenant.
+var AUTH = {
+  clientId: 'debd63be-2397-4d6e-adb1-381574e7352b',  // UserPermissionManagement app
+  tenantId: '063ab74f-56d1-429a-b96d-a24a572025de',  // Provident Healthcare tenant
+};
+var msalInst = null;
+var CURRENT_USER = null;
+var BOOT_ATTEMPTS = 0;
+
+function setSigninError(msg){
+  var el = document.getElementById('signinErr');
+  if (!msg){ el.classList.remove('show'); el.textContent = ''; return; }
+  el.classList.add('show'); el.textContent = msg;
+}
+
+function showSpinner(label){
+  document.getElementById('signinCard').innerHTML =
+    '<div class="signin-spin"></div>'
+  + '<h1>' + (label || 'Signing you in...') + '</h1>'
+  + '<p>One moment while we verify your account.</p>';
+}
+
+async function signIn(){
+  if (!msalInst){ setSigninError('Auth library not loaded yet — check your network.'); return; }
+  setSigninError('');
+  try {
+    showSpinner('Signing in...');
+    // prompt:'select_account' lets user pick if multi-account
+    var res = await msalInst.loginPopup({ scopes: ['User.Read'], prompt: 'select_account' });
+    if (res && res.account){
+      enterDashboard(res.account);
+    } else {
+      throw new Error('No account returned from sign-in.');
+    }
+  } catch (e) {
+    console.error(e);
+    rebuildSignInCard();
+    var msg = e && e.message ? e.message : String(e);
+    if (/AADSTS50020|AADSTS50105|AADSTS90072|tenant/i.test(msg)){
+      msg = 'Access denied: your account is not part of the Provident Healthcare tenant. Sign in with your @gshealthcarellc.com or @providenthcc.com account.';
+    } else if (/popup/i.test(msg)){
+      msg = 'Popup was blocked. Allow popups for this site and try again.';
+    }
+    setSigninError(msg);
+  }
+}
+
+function rebuildSignInCard(){
+  document.getElementById('signinCard').innerHTML =
+    '<span class="pill">SUNWAVE CRM</span>'
+  + '<h1>Provident Analytics</h1>'
+  + '<p>Sign in with your organization Microsoft 365 account to access the CRM &amp; Productivity dashboard.</p>'
+  + '<button class="signin-btn" id="signinBtn">'
+  +   '<span class="ms-logo"><span></span><span></span><span></span><span></span></span>'
+  +   '<span>Sign in with Microsoft</span>'
+  + '</button>'
+  + '<div class="signin-error" id="signinErr"></div>'
+  + '<small>Restricted to <strong>@gshealthcarellc.com</strong> &amp; <strong>@providenthcc.com</strong> tenant accounts.</small>';
+  document.getElementById('signinBtn').onclick = signIn;
+}
+
+function signOut(){
+  if (!msalInst) { location.reload(); return; }
+  var acc = msalInst.getActiveAccount() || (msalInst.getAllAccounts()[0]);
+  msalInst.logoutPopup({ account: acc, mainWindowRedirectUri: window.location.href }).catch(function(){
+    location.reload();
+  });
+}
+
+function enterDashboard(account){
+  CURRENT_USER = account;
+  // Hide overlay, unlock body
+  var ov = document.getElementById('signin-overlay');
+  if (ov) ov.style.display = 'none';
+  document.body.classList.remove('locked');
+  // Show user badge
+  var name = account.name || account.username || 'User';
+  var initials = name.split(/\s+/).map(function(s){return s[0]||'';}).join('').slice(0,2).toUpperCase() || '!?';
+  document.getElementById('tbUser').style.display = 'flex';
+  document.getElementById('tbAvatar').textContent = initials;
+  document.getElementById('tbName').textContent = name;
+  document.getElementById('tbName').title = account.username || '';
+  // Mount the dashboard
+  bootstrapDashboard();
+}
+
+async function authBoot(){
+  BOOT_ATTEMPTS++;
+  if (!window.msal || !window.msal.PublicClientApplication){
+    if (BOOT_ATTEMPTS > 100){
+      setSigninError('Microsoft sign-in library failed to load. Check your internet / content blockers, then reload.');
+      return;
+    }
+    setTimeout(authBoot, 50); return;
+  }
+  try {
+    msalInst = new msal.PublicClientApplication({
+      auth: {
+        clientId: AUTH.clientId,
+        authority: 'https://login.microsoftonline.com/' + AUTH.tenantId,  // single-tenant: rejects guest/personal accounts
+        redirectUri: window.location.origin + window.location.pathname,
+      },
+      cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false }
+    });
+    if (typeof msalInst.initialize === 'function') await msalInst.initialize();
+    await msalInst.handleRedirectPromise();
+    var accs = msalInst.getAllAccounts();
+    if (accs.length){
+      msalInst.setActiveAccount(accs[0]);
+      // Verify token can be silently acquired (still valid)
+      try {
+        await msalInst.acquireTokenSilent({ scopes: ['User.Read'], account: accs[0] });
+        enterDashboard(accs[0]);
+        return;
+      } catch (e) {
+        // Silent fail — fall through to button
+      }
+    }
+    // Show sign-in button
+    document.getElementById('signinBtn').onclick = signIn;
+  } catch (e) {
+    console.error(e);
+    setSigninError('Auth init failed: ' + (e && e.message ? e.message : String(e)));
+  }
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', authBoot);
+else authBoot();
+
 // ── DATA — replaced by build_crm.py ────────────────────────────────────────
 var OPPS  = /*INJECT_OPPS*/null;
 var ACTS  = /*INJECT_ACTS*/null;
@@ -977,8 +1154,12 @@ function buildTrends() {
   });
 }
 
-// ── Initial render ────────────────────────────────────────────────────────
-buildOverview();
+// ── Initial render — gated by sign-in ─────────────────────────────────────
+function bootstrapDashboard() {
+  // Called by enterDashboard() once the user has authenticated against the
+  // Provident tenant. Defers all data-bound rendering until then.
+  buildOverview();
+}
 </script>
 </body>
 </html>
