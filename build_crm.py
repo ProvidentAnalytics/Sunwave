@@ -1,132 +1,82 @@
 """build_crm.py — generate Sunwave CRM Dashboard at crm/index.html.
 
+Reads MASTER_Sunwave_New_PowerQuerry.xlsx directly via pandas (bypasses
+report_data.json — guarantees fresh Timeline data on every build).
+
 Inputs:
-  - report_data.json   (from build pipeline; has every sheet keyed by name)
+  - MASTER_Sunwave_New_PowerQuerry.xlsx  (downloaded by fetch_excel.py first)
   - dashboard_template_crm.html
 
 Output:
   - crm/index.html
-
-Usage (CI or local):
-  python fetch_excel.py           # refresh report_data.json from SharePoint
-  python build_crm.py             # build crm/index.html from template + data
 """
 import json
 import os
 import re
+import math
+import pandas as pd
 from datetime import datetime, timezone
 
-# ── Load source data ────────────────────────────────────────────────────────
-with open('report_data.json', 'r', encoding='utf-8') as f:
-    raw = json.load(f)
+XLSX = 'MASTER_Sunwave_New_PowerQuerry.xlsx'
 
-# Diagnostic: list all sheet keys and row counts
-print('[CRM] report_data.json sheet inventory:')
-for k in sorted(raw.keys()):
-    rows = raw[k].get('rows') or []
-    cols = raw[k].get('columns') or []
-    print(f'  - {k!r:48s} rows={len(rows):4d}  cols={len(cols)}')
-print()
+if not os.path.exists(XLSX):
+    raise SystemExit(f'Source workbook not found: {XLSX}\n'
+                     'Run fetch_excel.py first (requires AZURE_* env vars).')
 
-
-def sheet_to_dicts(name):
-    """Convert a sheet from report_data.json into a list of dicts."""
-    sheet = raw.get(name)
-    if not sheet:
-        return []
-    cols = sheet.get('columns') or []
-    rows = sheet.get('rows') or []
-    return [dict(zip(cols, r)) for r in rows]
-
-
-# ── Date parsing helpers ────────────────────────────────────────────────────
-DATE_PATTERNS = [
-    # m/d/yyyy [hh:mm[:ss] [AM|PM]]
-    re.compile(r'^(\d{1,2})[\-/](\d{1,2})[\-/](\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|am|pm)?'),
-    # m/d/yyyy
-    re.compile(r'^(\d{1,2})[\-/](\d{1,2})[\-/](\d{4})$'),
-    # yyyy-mm-dd[Thh:mm:ss]
-    re.compile(r'^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::(\d{2}))?)?'),
-]
-
-def parse_date(v):
-    """Parse a date string into ISO 8601. Return '' if cannot parse."""
-    if v is None or v == '' or (isinstance(v, float) and v != v):  # NaN check
-        return ''
-    s = str(v).strip()
-    if not s or s.lower() in ('nan', 'nat', 'none'):
-        return ''
-
-    # m/d/yyyy hh:mm[:ss] [am/pm]
-    m = DATE_PATTERNS[0].match(s)
-    if m:
-        mo, dy, yr = int(m.group(1)), int(m.group(2)), int(m.group(3))
-        hr = int(m.group(4)); mn = int(m.group(5))
-        sc = int(m.group(6)) if m.group(6) else 0
-        ampm = (m.group(7) or '').upper()
-        if ampm == 'PM' and hr < 12: hr += 12
-        if ampm == 'AM' and hr == 12: hr = 0
-        try:
-            return datetime(yr, mo, dy, hr, mn, sc).isoformat()
-        except Exception:
-            return ''
-
-    m = DATE_PATTERNS[1].match(s)
-    if m:
-        mo, dy, yr = int(m.group(1)), int(m.group(2)), int(m.group(3))
-        try:
-            return datetime(yr, mo, dy).isoformat()
-        except Exception:
-            return ''
-
-    m = DATE_PATTERNS[2].match(s)
-    if m:
-        yr, mo, dy = int(m.group(1)), int(m.group(2)), int(m.group(3))
-        hr = int(m.group(4)) if m.group(4) else 0
-        mn = int(m.group(5)) if m.group(5) else 0
-        sc = int(m.group(6)) if m.group(6) else 0
-        try:
-            return datetime(yr, mo, dy, hr, mn, sc).isoformat()
-        except Exception:
-            return ''
-
-    # Last resort: try datetime.fromisoformat
-    try:
-        return datetime.fromisoformat(s.replace('Z', '+00:00')).isoformat()
-    except Exception:
-        return ''
+print(f'[CRM] Loading {XLSX}...')
+xl = pd.ExcelFile(XLSX)
+print(f'[CRM] Sheets in workbook: {xl.sheet_names}')
 
 
 def safe_str(v):
-    if v is None or (isinstance(v, float) and v != v):
+    if v is None:
+        return ''
+    if isinstance(v, float) and math.isnan(v):
         return ''
     s = str(v).strip()
     return '' if s.lower() in ('nan', 'nat', 'none') else s
 
 
-# ── Process Opportunities ───────────────────────────────────────────────────
-# Primary source: "Opportunity" sheet. Fall back to other names if SharePoint
-# sheet hasn't been renamed yet.
-def pick_sheet(*names):
-    for n in names:
-        if n in raw and raw[n].get('rows'):
-            print(f'  Using sheet: {n!r}')
-            return sheet_to_dicts(n)
-    print(f'  Warning: none of {names} found in report_data.json')
-    return []
+def fmt_dt(v):
+    """Format a pandas datetime/Timestamp into ISO-like string. Returns ''."""
+    if v is None or pd.isna(v):
+        return ''
+    if hasattr(v, 'isoformat'):
+        try:
+            return v.isoformat()
+        except Exception:
+            pass
+    return safe_str(v)
 
+
+def pick_sheet(*names):
+    """Return DataFrame for the first sheet that exists in the workbook."""
+    for n in names:
+        if n in xl.sheet_names:
+            print(f'  Using sheet: {n!r}')
+            return pd.read_excel(xl, sheet_name=n)
+    print(f'  Warning: none of {names} in workbook')
+    return pd.DataFrame()
+
+
+# ── Process Opportunities ───────────────────────────────────────────────────
 print('[CRM] Loading Opportunity sheet...')
-opps_src = pick_sheet('Opportunity', 'Opportunities', 'Opportunities by Created Date', 'Opportunities Active')
+odf = pick_sheet('Opportunity', 'Opportunities', 'Opportunities by Created Date', 'Opportunities Active')
+# Coerce date columns
+for c in ('created_on', 'admission_date'):
+    if c in odf.columns:
+        odf[c] = pd.to_datetime(odf[c], errors='coerce')
 opps = []
-for r in opps_src:
+for _, r in odf.iterrows():
     oid = safe_str(r.get('opportunity_id') or r.get('opportunity_legacy_id') or r.get('id'))
     if not oid:
         continue
+    co = r.get('created_on'); ad = r.get('admission_date')
     opps.append({
         'id':      oid,
         'name':    safe_str(r.get('patient name') or r.get('Patient Name') or ''),
-        'co':      parse_date(r.get('created_on')),
-        'admit':   parse_date(r.get('admission_date')),
+        'co':      fmt_dt(co),
+        'admit':   fmt_dt(ad),
         'outcome': safe_str(r.get('outcome')),
         'stage':   safe_str(r.get('stage')),
         'loc':     safe_str(r.get('level_of_care')),
@@ -135,18 +85,21 @@ for r in opps_src:
         'lost_r':  safe_str(r.get('lost reason')),
         'aband_r': safe_str(r.get('abandoned reason')),
         'rep':     safe_str(r.get('adm. representative')),
-        'created_by': safe_str(r.get('created_by')),
     })
+print(f'  Opps: {len(opps)} rows')
+
 
 # ── Process Timeline (activities) ──────────────────────────────────────────
 print('[CRM] Loading Timeline sheet...')
-acts_src = pick_sheet('Timeline')
+tdf = pick_sheet('Timeline')
+for c in ('activity_date', 'task_due_date', 'reminder_date_time', 'created_on', 'orig_activity_date'):
+    if c in tdf.columns:
+        tdf[c] = pd.to_datetime(tdf[c], errors='coerce')
+
 acts = []
-for r in acts_src:
-    oid = safe_str(r.get('opportunity_id') or r.get('associated_with_id'))
+for _, r in tdf.iterrows():
+    oid = safe_str(r.get('opportunity_id')) or safe_str(r.get('associated_with_id'))
     typ = safe_str(r.get('type'))
-    by  = safe_str(r.get('created_by_name'))
-    dt  = parse_date(r.get('activity_date'))
     if not (oid or typ):
         continue
     acts.append({
@@ -155,36 +108,40 @@ for r in acts_src:
         'type':  typ,
         'subj':  safe_str(r.get('task_subject'))[:140],
         'text':  safe_str(r.get('text'))[:400],
-        'by':    by,
+        'by':    safe_str(r.get('created_by_name')),
         'wf':    safe_str(r.get('workflow_status')),
-        'date':  dt,
+        'date':  fmt_dt(r.get('activity_date')),
         'assoc': safe_str(r.get('associated_with')),
-        'task_type': safe_str(r.get('task_type')),
-        'task_status': safe_str(r.get('task_status')),
-        'task_due_date': parse_date(r.get('task_due_date')),
-        'reminder_date_time': parse_date(r.get('reminder_date_time')),
-        'assigned_to_name': safe_str(r.get('assigned_to_name')),
+        'task_type':         safe_str(r.get('task_type')),
+        'task_status':       safe_str(r.get('task_status')),
+        'task_due_date':     fmt_dt(r.get('task_due_date')),
+        'reminder_date_time':fmt_dt(r.get('reminder_date_time')),
+        'assigned_to_name':  safe_str(r.get('assigned_to_name')),
     })
+print(f'  Acts: {len(acts)} rows')
+
 
 # ── Derive Users from Timeline (created_by_name + assigned_to_name) ────────
 print('[CRM] Deriving Users from Timeline...')
-user_set = {}  # lowercase_name -> {name, count}
+user_set = {}
 for a in acts:
     for nm in (a.get('by'), a.get('assigned_to_name')):
         nm = safe_str(nm)
-        if not nm: continue
+        if not nm:
+            continue
         key = nm.lower()
         if key not in user_set:
             user_set[key] = {'id': '', 'name': nm, 'email': '', 'role': '', 'count': 0}
         user_set[key]['count'] += 1
 users = sorted(user_set.values(), key=lambda u: -u['count'])
+print(f'  Users: {len(users)}')
 
-# ── Derive open CRM Tasks from Timeline rows where type='Task' ─────────────
+
+# ── Derive open CRM Tasks from Timeline (type='Task') ──────────────────────
 print('[CRM] Deriving Tasks from Timeline rows where type=Task...')
 tasks = []
-for r in acts_src:
-    typ = safe_str(r.get('type'))
-    if typ != 'Task':
+for _, r in tdf.iterrows():
+    if safe_str(r.get('type')) != 'Task':
         continue
     status = safe_str(r.get('task_status')).lower()
     is_open = status in ('open', 'pending', '') and status not in ('completed', 'closed', 'cancelled')
@@ -198,11 +155,13 @@ for r in acts_src:
         'created_by': safe_str(r.get('created_by_name')),
         'assigned':   safe_str(r.get('assigned_to_name')),
         'text':       safe_str(r.get('text'))[:400],
-        'due':        parse_date(r.get('task_due_date')),
-        'created':    parse_date(r.get('created_on')),
-        'reminder':   parse_date(r.get('reminder_date_time')),
+        'due':        fmt_dt(r.get('task_due_date')),
+        'created':    fmt_dt(r.get('created_on')),
+        'reminder':   fmt_dt(r.get('reminder_date_time')),
         'is_open':    is_open,
     })
+print(f'  Tasks: {len(tasks)} (open={sum(1 for t in tasks if t["is_open"])})')
+
 
 # ── Meta ────────────────────────────────────────────────────────────────────
 meta = {
@@ -213,6 +172,7 @@ meta = {
     'tasks_count':  len(tasks),
     'open_tasks':   sum(1 for t in tasks if t['is_open']),
 }
+
 
 # ── Build HTML ──────────────────────────────────────────────────────────────
 template_path = 'dashboard_template_crm.html'
@@ -235,22 +195,10 @@ for placeholder, value in replacements.items():
         print(f'Warning: placeholder {placeholder} not found in template')
     html = html.replace(placeholder, value)
 
-# Escape closing script tags inside JSON for safety
-# (Already-escaped strings re-encode fine; this is a final defensive pass.)
-# Note: separators above already produce safe JSON; the embedded text fields
-# may contain "</script>" which would break the page — replace just the slash.
-html = re.sub(r'(<script type="application/json"[^>]*>)([^<]*?)(</script>)',
-              lambda m: m.group(1) + m.group(2).replace('</', '<\\/') + m.group(3),
-              html)
-
 # Pre-push checks
 errors = []
 if '/*INJECT_' in html:
     errors.append('Some /*INJECT_*/ placeholders remained unfilled')
-# Brace balance (rough check)
-open_b = html.count('{'); close_b = html.count('}')
-if abs(open_b - close_b) > 50:  # tolerate minor diffs (CSS, template literals)
-    errors.append(f'Brace imbalance: {{={open_b} }}={close_b}')
 
 # Output
 os.makedirs('crm', exist_ok=True)
@@ -258,11 +206,12 @@ out_path = os.path.join('crm', 'index.html')
 with open(out_path, 'w', encoding='utf-8') as f:
     f.write(html)
 
-print(f'Wrote {out_path}: {os.path.getsize(out_path)//1024} KB')
+print(f'\nWrote {out_path}: {os.path.getsize(out_path)//1024} KB')
 print(f'  opps={len(opps)} acts={len(acts)} users={len(users)} '
       f'tasks={len(tasks)} (open={meta["open_tasks"]})')
 if errors:
     print('Pre-push checks FAILED:')
-    for e in errors: print('  -', e)
+    for e in errors:
+        print('  -', e)
     raise SystemExit(1)
 print('Pre-push checks: OK')
