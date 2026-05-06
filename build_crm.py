@@ -129,13 +129,57 @@ def pick_sheet(*names):
     return pd.DataFrame()
 
 
+def coerce_date_col(series):
+    """Robust date coercion that handles three storage formats:
+      1. Already-datetime cells (pd.Timestamp)         → keep
+      2. Excel serial numbers stored as int/float/str  → convert via Excel epoch
+      3. Date strings ('05/02/2026', '2026-05-02', etc.) → parse normally
+
+    Different sheets / cells in the same Sunwave xlsx use different formats —
+    notably admission_date in 'Opportunities' arrives as Excel serial numbers,
+    while created_on arrives as date strings. Without this helper, naive
+    pd.to_datetime() interprets serial numbers as nanoseconds-since-epoch
+    and produces 1970-01-01 results.
+    """
+    EXCEL_EPOCH = pd.Timestamp('1899-12-30')
+
+    def conv(v):
+        if v is None:
+            return pd.NaT
+        if isinstance(v, float) and math.isnan(v):
+            return pd.NaT
+        if isinstance(v, pd.Timestamp):
+            return v
+        if hasattr(v, 'isoformat'):  # datetime.datetime
+            return pd.Timestamp(v)
+        if isinstance(v, (int, float)):
+            f = float(v)
+            if 1 <= f <= 100000:  # plausible Excel serial range (1900..2173)
+                return EXCEL_EPOCH + pd.Timedelta(days=f)
+            return pd.NaT
+        s = str(v).strip()
+        if not s or s.lower() in ('nan', 'nat', 'none'):
+            return pd.NaT
+        # Try as Excel serial first (handles '46144' / '46144.0' string forms)
+        try:
+            f = float(s)
+            if 1 <= f <= 100000:
+                return EXCEL_EPOCH + pd.Timedelta(days=f)
+        except (ValueError, TypeError):
+            pass
+        # Fall back to standard date-string parsing
+        return pd.to_datetime(s, errors='coerce')
+
+    return series.apply(conv)
+
+
 # ── Process Opportunities ───────────────────────────────────────────────────
 print('[CRM] Loading Opportunity sheet...')
 odf = pick_sheet('Opportunity', 'Opportunities', 'Opportunities by Created Date',
                  'Opportunities Active')
 for c in ('created_on', 'admission_date', 'lost_date', 'abandoned_date'):
     if c in odf.columns:
-        odf[c] = pd.to_datetime(odf[c], errors='coerce')
+        odf[c] = coerce_date_col(odf[c])
 
 opps = []
 excluded_count = 0
@@ -202,7 +246,7 @@ print('[CRM] Loading Timeline sheet...')
 tdf = pick_sheet('Timeline', 'Activities', 'Activity')
 for c in ('activity_date', 'task_due_date', 'created_on', 'reminder_date_time'):
     if c in tdf.columns:
-        tdf[c] = pd.to_datetime(tdf[c], errors='coerce')
+        tdf[c] = coerce_date_col(tdf[c])
 
 acts = []
 for _, r in tdf.iterrows():
