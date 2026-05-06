@@ -673,8 +673,9 @@ function kpi(cls, lbl, val, sub){
 // ── Heatmap color util ───────────────────────────────────────────────────
 function heatColor(value, max, baseRgb){
   // baseRgb = [r,g,b] for the navy variant, etc.
+  // Capped at alpha 0.35 to keep cells light — dark text stays readable.
   if (!max || value <= 0) return '#fff';
-  var alpha = Math.min(0.85, 0.07 + (value/max) * 0.78);
+  var alpha = Math.min(0.35, 0.05 + (value/max) * 0.30);
   return 'rgba(' + baseRgb[0] + ',' + baseRgb[1] + ',' + baseRgb[2] + ',' + alpha.toFixed(2) + ')';
 }
 function heatColorRedGreen(pctVal){
@@ -788,6 +789,93 @@ function isMatrixRowCollapsed(matrixId, rowId){
   return !!MTX_COLLAPSED[matrixId + '|' + rowId];
 }
 
+// ── Data labels plugin — draws values (and % when applicable) on bars/lines/pies ──
+// Inline plugin so we don't pull in chartjs-plugin-datalabels CDN.
+var dataLabelsPlugin = {
+  id: 'dataLabels',
+  afterDatasetsDraw: function(chart){
+    var ctx = chart.ctx;
+    var type = chart.config.type;
+    var datasets = chart.data.datasets;
+    var stackTotalsByIdx = null;
+
+    // For stacked bars we need per-stack totals to compute %
+    if (type === 'bar' && chart.options && chart.options.scales && chart.options.scales.x && chart.options.scales.x.stacked){
+      stackTotalsByIdx = {};
+      datasets.forEach(function(ds, dsIdx){
+        if (chart.getDatasetMeta(dsIdx).hidden) return;
+        var stackKey = ds.stack || ('s' + dsIdx);
+        ds.data.forEach(function(v, i){
+          var k = stackKey + '|' + i;
+          stackTotalsByIdx[k] = (stackTotalsByIdx[k] || 0) + (Number(v) || 0);
+        });
+      });
+    }
+
+    datasets.forEach(function(ds, dsIdx){
+      var meta = chart.getDatasetMeta(dsIdx);
+      if (meta.hidden) return;
+      var stackKey = ds.stack || ('s' + dsIdx);
+
+      meta.data.forEach(function(elem, i){
+        var v = Number(ds.data[i]);
+        if (!v || isNaN(v)) return;
+        var pos = elem.tooltipPosition ? elem.tooltipPosition() : { x:elem.x, y:elem.y };
+
+        if (type === 'pie' || type === 'doughnut'){
+          // Center label inside slice; white text
+          var dsTotal = ds.data.reduce(function(a,b){return a+(Number(b)||0)},0);
+          var pctStr = dsTotal > 0 ? ' (' + (v/dsTotal*100).toFixed(0) + '%)' : '';
+          ctx.save();
+          ctx.fillStyle = '#fff';
+          ctx.font = '700 11px "Space Mono", monospace';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.shadowColor = 'rgba(0,0,0,0.5)';
+          ctx.shadowBlur = 3;
+          ctx.fillText(v + pctStr, pos.x, pos.y);
+          ctx.restore();
+          return;
+        }
+
+        // Bar / line: label above the element with dark navy text
+        var label = String(v);
+        if (stackTotalsByIdx){
+          var k = stackKey + '|' + i;
+          var tot = stackTotalsByIdx[k];
+          if (tot > 0 && datasets.length > 1){
+            label = v + ' (' + (v/tot*100).toFixed(0) + '%)';
+          }
+        }
+
+        ctx.save();
+        ctx.fillStyle = '#0a3d5c';
+        ctx.font = '600 9.5px "Space Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+
+        // For stacked bars, position label INSIDE the segment center (so each stack member gets its own label)
+        if (type === 'bar' && stackTotalsByIdx){
+          var barH = (elem.base != null) ? Math.abs(elem.base - elem.y) : 0;
+          if (barH >= 14){
+            // Inside segment, vertically centered
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#fff';
+            ctx.shadowColor = 'rgba(0,0,0,0.4)';
+            ctx.shadowBlur = 2;
+            ctx.fillText(label, pos.x, (elem.y + (elem.base || elem.y)) / 2);
+          }
+          // Skip label if segment too short to fit text
+        } else {
+          // Non-stacked bar or line — label just above the element
+          ctx.fillText(label, pos.x, pos.y - 3);
+        }
+        ctx.restore();
+      });
+    });
+  }
+};
+
 // ── Generic trend chart helper ───────────────────────────────────────────
 function buildTrendCard(title, sub, canvasId){
   var html = '<div class="card"><div class="card-h"><div><div class="card-title">' + esc(title) + '</div><div class="card-sub">' + esc(sub) + '</div></div></div>';
@@ -804,13 +892,15 @@ function renderTrendChart(canvasId, labels, datasets, type){
     data: { labels: labels, datasets: datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 18 } },
       scales: {
         x: { stacked: type === 'bar', ticks:{ font:{size:9}, maxTicksLimit:14 } },
         y: { stacked: type === 'bar', beginAtZero: true, ticks:{ font:{size:10} } }
       },
       plugins: { legend:{ position:'top', labels:{ font:{size:10}, boxWidth:12 } }, tooltip:{ mode:'index', intersect:false } },
-      elements: { point: { radius: type === 'line' ? 0 : 3 } }
-    }
+      elements: { point: { radius: type === 'line' ? 2.5 : 3 } }
+    },
+    plugins: [dataLabelsPlugin]
   });
 }
 
@@ -967,7 +1057,8 @@ function buildOverview(){
   var total    = oppsP.length;
   var admitted = oppsP.filter(isAdmitted).length;
   var inPipe   = oppsP.filter(isInPipe).length;
-  var lost     = oppsP.filter(isLost).length;
+  var lostOnly = oppsP.filter(function(o){ return o.outcome === 'Lost'; }).length;
+  var abandOnly = oppsP.filter(function(o){ return o.outcome === 'Abandoned'; }).length;
 
   var html = '';
   html += '<div class="kpis">';
@@ -975,11 +1066,12 @@ function buildOverview(){
   html += kpi('green', 'Admitted', admitted, pct(admitted, total) + ' admit rate');
   html += kpi('teal',  'Admit Rate', pct(admitted, total));
   html += kpi('blue',  'In Pipeline', inPipe);
-  html += kpi('red',   'Lost / Abandoned', lost);
+  html += kpi('red',   'Lost', lostOnly);
+  html += kpi('purple','Abandoned', abandOnly);
   html += kpi('amber', 'Activities (' + p + ')', actsP.length);
   html += '</div>';
 
-  html += buildTrendCard('Outcome Trend', 'Created vs Admitted vs Lost/Abandoned · ' + p + ' · grouped by ' + granLabel(), 'ch-ov-trend');
+  html += buildTrendCard('Outcome Trend', 'Created vs Admitted vs Lost vs Abandoned · ' + p + ' · grouped by ' + granLabel(), 'ch-ov-trend');
 
   // Activity Leaderboard
   var lb = {};
@@ -1078,9 +1170,10 @@ function buildOverview(){
     if (o.co){
       var k = pd(o.co); if (k){
         var ks = k.toISOString().slice(0,10);
-        oppsByCo[ks] = oppsByCo[ks] || { c:0, a:0, l:0 };
+        oppsByCo[ks] = oppsByCo[ks] || { c:0, a:0, l:0, ab:0 };
         oppsByCo[ks].c++;
-        if (isLost(o)) oppsByCo[ks].l++;
+        if (o.outcome === 'Lost') oppsByCo[ks].l++;
+        else if (o.outcome === 'Abandoned') oppsByCo[ks].ab++;
       }
     }
     if (isAdmitted(o) && o.admit){
@@ -1092,13 +1185,14 @@ function buildOverview(){
   });
   var agg = aggregateDates(days, FILTERS.gran, function(d){
     var ks = d.toISOString().slice(0,10);
-    var co = oppsByCo[ks] || { c:0, l:0 };
-    return { Created: co.c, Admitted: oppsByAdmit[ks]||0, Lost: co.l };
+    var co = oppsByCo[ks] || { c:0, l:0, ab:0 };
+    return { Created: co.c, Admitted: oppsByAdmit[ks]||0, Lost: co.l, Abandoned: co.ab };
   });
   renderTrendChart('ch-ov-trend', agg.labels, [
-    { label:'Created',  data:agg.values.map(function(v){return v.Created||0}),  backgroundColor:'#0a3d5c', borderRadius:3, stack:'A' },
-    { label:'Admitted', data:agg.values.map(function(v){return v.Admitted||0}), backgroundColor:'#10b981', borderRadius:3, stack:'B' },
-    { label:'Lost/Aband', data:agg.values.map(function(v){return v.Lost||0}),    backgroundColor:'#ef4444', borderRadius:3, stack:'C' }
+    { label:'Created',   data:agg.values.map(function(v){return v.Created||0}),   backgroundColor:'#0a3d5c', borderRadius:3, stack:'A' },
+    { label:'Admitted',  data:agg.values.map(function(v){return v.Admitted||0}),  backgroundColor:'#10b981', borderRadius:3, stack:'B' },
+    { label:'Lost',      data:agg.values.map(function(v){return v.Lost||0}),      backgroundColor:'#ef4444', borderRadius:3, stack:'C' },
+    { label:'Abandoned', data:agg.values.map(function(v){return v.Abandoned||0}), backgroundColor:'#8b5cf6', borderRadius:3, stack:'C' }
   ], 'bar');
 }
 
@@ -1432,9 +1526,11 @@ function renderBucketChart(canvasId, data, color){
     },
     options:{
       responsive:true, maintainAspectRatio:false,
+      layout:{ padding:{ top:18 } },
       scales:{ x:{ ticks:{font:{size:9}} }, y:{ beginAtZero:true, ticks:{font:{size:9}} } },
       plugins:{ legend:{display:false} }
-    }
+    },
+    plugins:[dataLabelsPlugin]
   });
 }
 
