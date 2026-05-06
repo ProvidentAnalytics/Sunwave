@@ -3,12 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Sunwave CRM &mdash; Provident Analytics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"></script>
 <script>if(!window.msal){document.write('<script src="https://unpkg.com/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"><\/script>');}</script>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
   --navy:#0a3d5c; --teal:#3dffc0; --teal-dim:rgba(61,255,192,0.12);
@@ -16,69 +21,103 @@
   --text:#0f1923; --muted:#6b7e96;
   --red:#ef4444; --amber:#f59e0b; --blue:#3b82f6; --green:#10b981; --purple:#8b5cf6;
   --shadow:0 1px 3px rgba(10,61,92,.07),0 4px 14px rgba(10,61,92,.04);
+  --sidebar-w: 230px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh}
+
 /* Topbar */
-.topbar{background:var(--navy);height:58px;padding:0 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 2px 16px rgba(10,61,92,.25)}
+.topbar{background:var(--navy);height:54px;padding:0 22px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 2px 16px rgba(10,61,92,.25)}
 .tb-left{display:flex;align-items:center;gap:14px}
 .tb-pill{background:var(--teal);color:var(--navy);font-family:'Space Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.08em;padding:5px 10px;border-radius:4px}
-.tb-title{color:#fff;font-size:15px;font-weight:600;line-height:1.2}
-.tb-sub{color:rgba(255,255,255,.4);font-size:11px;font-family:'Space Mono',monospace}
-.tb-right{display:flex;align-items:center;gap:12px}
-.live-pill{display:flex;align-items:center;gap:6px;background:rgba(61,255,192,.1);border:1px solid rgba(61,255,192,.25);border-radius:20px;padding:5px 12px;font-family:'Space Mono',monospace;font-size:10px;color:var(--teal)}
+.tb-title{color:#fff;font-size:14px;font-weight:600;line-height:1.2}
+.tb-sub{color:rgba(255,255,255,.4);font-size:10px;font-family:'Space Mono',monospace}
+.tb-right{display:flex;align-items:center;gap:10px}
+.live-pill{display:flex;align-items:center;gap:6px;background:rgba(61,255,192,.1);border:1px solid rgba(61,255,192,.25);border-radius:20px;padding:4px 11px;font-family:'Space Mono',monospace;font-size:10px;color:var(--teal)}
 .live-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);animation:blink 2s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
-.sync-lbl{font-family:'Space Mono',monospace;font-size:10px;color:rgba(255,255,255,.45)}
+
 /* Tab nav */
-.tab-nav{background:var(--white);border-bottom:1px solid var(--border);padding:0 28px;display:flex;flex-wrap:wrap;position:sticky;top:58px;z-index:190;box-shadow:0 2px 8px rgba(10,61,92,.05);overflow-x:auto}
-.tnav{padding:12px 14px;border:none;border-bottom:3px solid transparent;background:none;font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:500;color:var(--muted);cursor:pointer;white-space:nowrap;transition:all .2s;margin-bottom:-1px}
+.tab-nav{background:var(--white);border-bottom:1px solid var(--border);padding:0 22px;display:flex;flex-wrap:wrap;position:sticky;top:54px;z-index:190;box-shadow:0 2px 8px rgba(10,61,92,.05)}
+.tnav{padding:11px 13px;border:none;border-bottom:3px solid transparent;background:none;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;white-space:nowrap;transition:all .2s;margin-bottom:-1px}
 .tnav:hover{color:var(--navy)}
 .tnav.active{color:var(--navy);border-bottom-color:var(--teal);font-weight:700}
-/* Filters bar */
-.filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:14px 28px;background:var(--white);border-bottom:1px solid var(--border);position:sticky;top:104px;z-index:180}
-.filt-grp{display:flex;align-items:center;gap:6px;padding:0 12px;border-right:1px solid var(--border)}
-.filt-grp:last-child{border-right:none}
-.filt-lbl{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
-.filt-btn{padding:6px 11px;border:1px solid var(--border);background:#fff;border-radius:5px;font-family:'Space Mono',monospace;font-size:10px;font-weight:700;color:var(--muted);cursor:pointer;letter-spacing:.04em;transition:all .15s}
-.filt-btn:hover{background:rgba(10,61,92,.07);color:var(--navy)}
-.filt-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
-.filt-sel{padding:6px 10px;border:1px solid var(--border);background:#fff;border-radius:5px;font-family:'Space Mono',monospace;font-size:11px;color:var(--navy);outline:none}
-.filt-sel:focus{border-color:var(--navy)}
-.filt-sel[multiple]{min-height:32px;max-height:32px;overflow-y:auto}
-.filt-sel[multiple]:focus{max-height:200px}
+
+/* MAIN LAYOUT — sidebar left + content right */
+.main-layout{display:grid;grid-template-columns:var(--sidebar-w) 1fr;min-height:calc(100vh - 54px - 42px)}
+
+/* SIDEBAR FILTER PANEL */
+.sidebar{background:var(--white);border-right:1px solid var(--border);padding:18px 16px;position:sticky;top:96px;align-self:start;height:calc(100vh - 96px);overflow-y:auto;box-shadow:1px 0 6px rgba(10,61,92,.04)}
+.sb-h{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--navy);font-weight:700;margin-bottom:6px;padding-bottom:5px;border-bottom:2px solid var(--teal);display:flex;align-items:center;gap:5px}
+.sb-grp{margin-bottom:18px}
+.sb-row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
+.sb-btn{padding:5px 9px;border:1px solid var(--border);background:#fff;border-radius:4px;font-family:'Space Mono',monospace;font-size:9.5px;font-weight:700;color:var(--muted);cursor:pointer;letter-spacing:.04em;transition:all .12s;flex:1;min-width:42px;text-align:center}
+.sb-btn:hover{background:rgba(10,61,92,.07);color:var(--navy)}
+.sb-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.sb-sel{width:100%;padding:6px 9px;border:1px solid var(--border);background:#fff;border-radius:4px;font-family:'Space Mono',monospace;font-size:11px;color:var(--navy);outline:none;margin-bottom:4px}
+.sb-sel:focus{border-color:var(--navy)}
+.sb-sel[multiple]{min-height:120px;font-size:10.5px}
+.sb-input{width:100%;padding:6px 9px;border:1px solid var(--border);background:#fff;border-radius:4px;font-family:'Space Mono',monospace;font-size:10.5px;color:var(--navy);outline:none}
+.sb-input:focus{border-color:var(--navy)}
+.sb-act-btn{width:100%;padding:8px 10px;border:1px solid var(--navy);background:var(--navy);color:#fff;border-radius:4px;font-family:'Space Mono',monospace;font-size:10px;font-weight:700;cursor:pointer;letter-spacing:.05em;transition:all .12s;margin-bottom:5px;text-align:center}
+.sb-act-btn:hover{background:#0d4d72}
+.sb-act-btn.alt{background:#fff;color:var(--navy)}
+.sb-act-btn.alt:hover{background:rgba(10,61,92,.07)}
+.sb-custom-dates{display:none;flex-direction:column;gap:5px;margin-top:5px;padding:8px;background:rgba(10,61,92,.04);border-radius:4px}
+.sb-custom-dates.show{display:flex}
+.sb-mini-lbl{font-family:'Space Mono',monospace;font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+
+/* User badge in topbar */
+.tb-user{display:flex;align-items:center;gap:8px;padding:4px 9px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:18px;color:#fff;font-size:11px}
+.tb-user-avatar{width:22px;height:22px;border-radius:50%;background:var(--teal);color:var(--navy);font-family:'Space Mono',monospace;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.tb-user-name{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tb-signout{background:none;border:none;color:rgba(255,255,255,.55);font-family:'Space Mono',monospace;font-size:9.5px;cursor:pointer;letter-spacing:.04em;text-transform:uppercase;padding:3px 7px;border-radius:4px;font-weight:700}
+.tb-signout:hover{color:#fff;background:rgba(255,255,255,.08)}
+
 /* Tab panels */
-.tab-panel{display:none;padding:22px 28px}.tab-panel.active{display:block}
+.content-area{padding:0;overflow-x:hidden}
+.tab-panel{display:none;padding:18px 22px}.tab-panel.active{display:block}
+
 /* KPIs */
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:18px}
-.kpi{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
-.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--navy);border-radius:12px 12px 0 0}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:14px}
+.kpi{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:13px 15px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--navy);border-radius:10px 10px 0 0}
 .kpi.teal::before{background:var(--teal)}.kpi.red::before{background:var(--red)}.kpi.amber::before{background:var(--amber)}.kpi.green::before{background:var(--green)}.kpi.blue::before{background:var(--blue)}.kpi.purple::before{background:var(--purple)}
-.kpi-lbl{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
-.kpi-val{font-size:28px;font-weight:700;color:var(--navy);line-height:1;letter-spacing:-.03em}
-.kpi-sub{font-size:11px;color:var(--muted);margin-top:5px}
+.kpi-lbl{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.kpi-val{font-size:24px;font-weight:700;color:var(--navy);line-height:1;letter-spacing:-.03em}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:4px}
+
 /* Card */
-.card{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow);margin-bottom:14px}
-.card-h{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:12px}
-.card-title{font-size:13px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.04em}
-.card-sub{font-size:11px;color:var(--muted);margin-top:3px;font-weight:400}
-.card-actions{display:flex;gap:6px}
-/* Tables */
-.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
-.tbl th{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:0 12px 9px 0;text-align:left;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff;cursor:pointer;user-select:none;white-space:nowrap;font-weight:700}
+.card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow);margin-bottom:12px}
+.card-h{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;gap:12px}
+.card-title{font-size:12.5px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.04em}
+.card-sub{font-size:10.5px;color:var(--muted);margin-top:3px;font-weight:400}
+.card-actions{display:flex;gap:6px;flex-wrap:wrap}
+.card-act-btn{padding:4px 9px;border:1px solid var(--navy);background:#fff;color:var(--navy);border-radius:4px;font-family:'Space Mono',monospace;font-size:9.5px;font-weight:700;cursor:pointer;letter-spacing:.04em;transition:all .12s;text-transform:uppercase}
+.card-act-btn:hover{background:var(--navy);color:#fff}
+.card-act-btn.active{background:var(--navy);color:#fff}
+
+/* Tables — compact density (change #7) */
+.tbl{width:100%;border-collapse:collapse;font-size:11.5px}
+.tbl th{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:5px 9px 5px 4px;text-align:left;border-bottom:1px solid var(--border);border-right:1px solid rgba(225,231,239,.5);position:sticky;top:0;background:#fff;cursor:pointer;user-select:none;white-space:nowrap;font-weight:700}
+.tbl th:last-child{border-right:none}
 .tbl th.sort-asc::after{content:' \25B2';color:var(--navy)}
 .tbl th.sort-desc::after{content:' \25BC';color:var(--navy)}
-.tbl td{padding:8px 12px 8px 0;border-bottom:1px solid rgba(225,231,239,.5);vertical-align:middle}
+.tbl td{padding:5px 9px 5px 4px;border-bottom:1px solid rgba(225,231,239,.5);border-right:1px solid rgba(225,231,239,.4);vertical-align:middle}
+.tbl td:last-child{border-right:none}
 .tbl tr:hover td{background:rgba(244,246,249,.8)}
 .tbl-wrap{overflow-x:auto;max-height:560px;overflow-y:auto}
 .tbl-wrap::-webkit-scrollbar{width:5px;height:5px}
 .tbl-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
 /* Layout grids */
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
-.g3{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px}
-@media(max-width:980px){.g2,.g3{grid-template-columns:1fr}}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.g3{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:12px}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+@media(max-width:980px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
 /* Badges */
-.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;font-family:'Space Mono',monospace}
+.badge{display:inline-block;padding:2px 7px;border-radius:9px;font-size:10px;font-weight:600;font-family:'Space Mono',monospace}
 .b-amber{background:rgba(245,158,11,.15);color:var(--amber)}
 .b-red{background:rgba(239,68,68,.15);color:var(--red)}
 .b-green{background:rgba(16,185,129,.15);color:var(--green)}
@@ -86,33 +125,41 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .b-muted{background:rgba(107,126,150,.15);color:var(--muted)}
 .b-purple{background:rgba(139,92,246,.15);color:var(--purple)}
 .b-teal{background:var(--teal-dim);color:var(--navy)}
-.rank-medal{font-size:14px;margin-right:4px}
+.rank-medal{font-size:13px;margin-right:3px}
 .num{text-align:right;font-variant-numeric:tabular-nums;font-family:'Space Mono',monospace}
+
 /* Search input */
-.tbl-search{flex:1;min-width:180px;background:var(--white);border:1px solid var(--border);border-radius:8px;padding:8px 13px;font-size:12px;color:var(--text);outline:none;font-family:'DM Sans',sans-serif}
+.tbl-search{flex:1;min-width:160px;background:var(--white);border:1px solid var(--border);border-radius:6px;padding:6px 11px;font-size:11.5px;color:var(--text);outline:none;font-family:'DM Sans',sans-serif}
 .tbl-search:focus{border-color:var(--navy)}
-.tbl-filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.tbl-filters{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center}
+
 /* Mini bar inline */
-.mbar{display:inline-block;height:8px;background:var(--bg);border-radius:4px;overflow:hidden;width:80px;vertical-align:middle;margin-right:6px}
-.mbar-fill{height:100%;background:var(--navy);border-radius:4px}
+.mbar{display:inline-block;height:6px;background:var(--bg);border-radius:3px;overflow:hidden;width:60px;vertical-align:middle;margin-right:5px}
+.mbar-fill{height:100%;background:var(--navy);border-radius:3px}
+
 /* Timeline expand row */
-.tl-detail{padding:14px 20px;background:#f8fafc;border-left:3px solid var(--navy);border-radius:0 6px 6px 0;margin:6px 0}
-.tl-event{padding:8px 0;border-bottom:1px dashed var(--border);font-size:12px}
+.tl-detail{padding:12px 16px;background:#f8fafc;border-left:3px solid var(--navy);border-radius:0 6px 6px 0;margin:6px 0}
+.tl-event{padding:7px 0;border-bottom:1px dashed var(--border);font-size:11.5px}
 .tl-event:last-child{border-bottom:none}
-.tl-date{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);margin-right:10px}
-.tl-type{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:700;background:var(--teal-dim);color:var(--navy);margin-right:8px;font-family:'Space Mono',monospace}
+.tl-date{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);margin-right:9px}
+.tl-type{display:inline-block;padding:1px 6px;border-radius:3px;font-size:9.5px;font-weight:700;background:var(--teal-dim);color:var(--navy);margin-right:7px;font-family:'Space Mono',monospace}
 .tl-by{font-weight:600;color:var(--navy)}
+
 /* Heatmap */
 .hm{display:grid;grid-template-columns:60px repeat(7,1fr);gap:2px}
 .hm-lbl{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);text-align:right;padding-right:4px;display:flex;align-items:center;justify-content:flex-end}
 .hm-cell{height:18px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text);font-family:'Space Mono',monospace}
+
 /* Empty state */
-.empty{padding:40px 20px;text-align:center;color:var(--muted);font-size:13px;font-style:italic}
+.empty{padding:30px 20px;text-align:center;color:var(--muted);font-size:12px;font-style:italic}
 /* Chart container */
-.chart-wrap{height:280px;position:relative}
-.chart-wrap-tall{height:360px;position:relative}
-/* Footer note */
-.footer{padding:18px 28px;color:var(--muted);font-size:11px;font-family:'Space Mono',monospace;text-align:center}
+.chart-wrap{height:240px;position:relative}
+.chart-wrap-tall{height:340px;position:relative}
+.chart-wrap-small{height:180px;position:relative}
+
+/* Footer */
+.footer{padding:12px 22px;color:var(--muted);font-size:10.5px;font-family:'Space Mono',monospace;text-align:center;background:var(--white);border-top:1px solid var(--border)}
+
 /* Sign-in overlay */
 #signin-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#0a3d5c 0%,#1e5e85 100%);display:flex;align-items:center;justify-content:center;z-index:9999;color:#fff;font-family:'DM Sans',sans-serif}
 .signin-card{background:rgba(255,255,255,.06);padding:40px 44px;border-radius:14px;max-width:440px;width:90%;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,.4);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.08)}
@@ -121,7 +168,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .signin-card p{font-size:13px;opacity:.85;margin-bottom:22px;line-height:1.5}
 .signin-card small{display:block;margin-top:18px;font-size:11px;opacity:.55;font-family:'Space Mono',monospace}
 .signin-btn{padding:13px 26px;background:#fff;color:var(--navy);border:none;border-radius:8px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:10px;transition:all .2s;box-shadow:0 6px 16px rgba(0,0,0,.25)}
-.signin-btn:hover{background:var(--teal);transform:translateY(-1px);box-shadow:0 10px 22px rgba(0,0,0,.35)}
+.signin-btn:hover{background:var(--teal);transform:translateY(-1px)}
 .signin-btn:active{transform:translateY(1px)}
 .ms-logo{display:inline-grid;grid-template:1fr 1fr / 1fr 1fr;gap:1px;width:18px;height:18px}
 .ms-logo span{display:block}
@@ -131,19 +178,73 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .signin-error.show{display:block}
 .signin-spin{width:36px;height:36px;border:4px solid rgba(255,255,255,.18);border-top-color:#fff;border-radius:50%;animation:sgspin 1s linear infinite;margin:0 auto 14px}
 @keyframes sgspin{to{transform:rotate(360deg)}}
-/* User badge in topbar */
-.tb-user{display:flex;align-items:center;gap:8px;padding:5px 10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:20px;color:#fff;font-size:11.5px}
-.tb-user-avatar{width:24px;height:24px;border-radius:50%;background:var(--teal);color:var(--navy);font-family:'Space Mono',monospace;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
-.tb-user-name{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tb-signout{background:none;border:none;color:rgba(255,255,255,.55);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;letter-spacing:.04em;text-transform:uppercase;padding:4px 8px;border-radius:4px;font-weight:700}
-.tb-signout:hover{color:#fff;background:rgba(255,255,255,.08)}
-/* Hide whole app until signed in */
 body.locked > *:not(#signin-overlay){visibility:hidden}
+
+/* Tasks tab specific */
+.tasks-row-overdue td{background:rgba(239,68,68,.04)!important}
+
+/* ── NEW: Trending matrix shared styling (#3 #4 #6 #9) ────────────────── */
+.matrix-wrap{position:relative;overflow:auto;max-height:560px;border:1px solid var(--border);border-radius:6px;background:#fff}
+.mtx{width:max-content;border-collapse:separate;border-spacing:0;font-size:10.5px;font-family:'Space Mono',monospace;min-width:100%}
+.mtx thead th{background:#f0f4f8;color:var(--navy);font-weight:700;text-align:right;padding:6px 8px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);position:sticky;top:0;z-index:5;font-size:9.5px;letter-spacing:.04em;white-space:nowrap}
+.mtx thead th.lbl{text-align:left;background:#e8eef4}
+.mtx thead th:last-child{border-right:none}
+.mtx tbody td{padding:5px 8px;border-bottom:1px solid rgba(225,231,239,.5);border-right:1px solid rgba(225,231,239,.5);text-align:right;vertical-align:middle;white-space:nowrap}
+.mtx tbody td:last-child{border-right:none}
+.mtx tbody td.lbl{text-align:left;font-family:'DM Sans',sans-serif;font-size:11.5px;color:var(--text);font-weight:500;background:#fff}
+.mtx tbody td.lbl.sub{padding-left:24px;font-size:11px;color:var(--muted);font-weight:400}
+.mtx tbody tr.expandable td.lbl{cursor:pointer;user-select:none}
+.mtx tbody tr.expandable td.lbl::before{content:'\25BC ';color:var(--muted);font-size:9px;margin-right:3px}
+.mtx tbody tr.expandable.collapsed td.lbl::before{content:'\25B6 '}
+.mtx tbody tr.totals td{font-weight:700;background:#eef3f8;border-top:2px solid var(--navy)}
+.mtx tbody tr.totals td.lbl{color:var(--navy);text-transform:uppercase;letter-spacing:.05em;font-size:10.5px}
+.mtx tbody tr.admit-rate-row td{background:#f6f0e8;font-weight:700}
+.mtx tbody tr.admit-rate-row td.lbl{color:#a05a00;text-transform:uppercase;letter-spacing:.04em;font-size:10px;font-family:'Space Mono',monospace}
+/* Frozen left column (label) */
+.mtx td.lbl, .mtx th.lbl{position:sticky;left:0;z-index:3;box-shadow:1px 0 0 var(--border)}
+.mtx thead th.lbl{z-index:8}
+/* Frozen right column (period total) */
+.mtx td.total-col, .mtx th.total-col{position:sticky;right:0;z-index:3;background:#f0f4f8;font-weight:700;color:var(--navy);box-shadow:-1px 0 0 var(--border)}
+.mtx thead th.total-col{z-index:8}
+/* Heatmap intensity utility — applied inline via style attribute */
+.mtx-cell-pct{font-size:8.5px;color:var(--muted);display:block;margin-top:1px}
+.mtx-cell-num{font-weight:600;color:var(--navy)}
+
+/* ── Funnel (#2) ──────────────────────────────────────────────────────── */
+.funnel{display:flex;flex-direction:column;align-items:center;gap:0;padding:8px 0}
+.funnel-band{display:flex;align-items:center;gap:14px;width:100%;padding:6px 14px;position:relative}
+.funnel-bar{background:linear-gradient(90deg,var(--navy),#0d4d72);color:#fff;padding:14px 18px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-family:'Space Mono',monospace;box-shadow:0 2px 6px rgba(10,61,92,.15);transition:all .25s}
+.funnel-bar:hover{box-shadow:0 4px 14px rgba(10,61,92,.25)}
+.funnel-bar-label{font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase}
+.funnel-bar-stats{display:flex;gap:14px;align-items:baseline;font-size:11px}
+.funnel-bar-count{font-size:18px;font-weight:700}
+.funnel-bar-pct{opacity:.75;font-size:10px}
+.funnel-arrow{display:flex;justify-content:center;width:100%;padding:2px 0;font-family:'Space Mono',monospace;font-size:10px;color:var(--muted)}
+.funnel-arrow strong{color:var(--navy);margin-left:4px}
+.funnel-side{display:flex;justify-content:center;margin-top:14px;padding:10px;background:rgba(245,158,11,.08);border:1px dashed var(--amber);border-radius:6px;font-family:'Space Mono',monospace;font-size:11px;color:#92400e}
+.funnel-unmapped{display:flex;justify-content:center;margin-top:8px;padding:8px;background:rgba(107,126,150,.08);border:1px dashed var(--muted);border-radius:6px;font-family:'Space Mono',monospace;font-size:10px;color:var(--muted)}
+
+/* ── Methodology footnote (#8) ───────────────────────────────────────── */
+.methodology{margin-top:14px;padding:14px 16px;background:#f8fafc;border:1px solid var(--border);border-left:3px solid var(--navy);border-radius:6px;font-size:11.5px;line-height:1.55;color:var(--text)}
+.methodology-h{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--navy);font-weight:700;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+.methodology-section{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--navy);font-weight:700;margin-top:11px;margin-bottom:4px}
+.methodology p{margin-bottom:6px;color:#374151}
+.methodology ul{margin-left:18px;margin-bottom:6px}
+.methodology li{margin-bottom:3px;color:#374151}
+
+/* Mobile responsive */
+@media(max-width:1024px){
+  :root{--sidebar-w: 100%}
+  .main-layout{grid-template-columns:1fr}
+  .sidebar{position:relative;top:auto;height:auto;border-right:none;border-bottom:1px solid var(--border);max-height:none;padding:14px 18px}
+  .sb-grp{display:inline-block;margin-right:14px;margin-bottom:10px;vertical-align:top;min-width:140px}
+  .sb-sel[multiple]{min-height:60px}
+}
 </style>
 </head>
 <body class="locked">
 
-<!-- Sign-in overlay (shown until authenticated to org tenant) -->
+<!-- Sign-in overlay -->
 <div id="signin-overlay">
   <div class="signin-card" id="signinCard">
     <span class="pill">SUNWAVE CRM</span>
@@ -184,49 +285,92 @@ body.locked > *:not(#signin-overlay){visibility:hidden}
   <button class="tnav" data-tab="productivity">User Productivity</button>
   <button class="tnav" data-tab="effectiveness">User Effectiveness</button>
   <button class="tnav" data-tab="flow">Opportunity Flow</button>
+  <button class="tnav" data-tab="referrals">Referral Sources</button>
+  <button class="tnav" data-tab="tasks">CRM Tasks</button>
   <button class="tnav" data-tab="trends">Activity Trends</button>
 </nav>
 
-<!-- Filters -->
-<div class="filters">
-  <div class="filt-grp">
-    <span class="filt-lbl">Period</span>
-    <button class="filt-btn" data-period="7D">7D</button>
-    <button class="filt-btn active" data-period="30D">30D</button>
-    <button class="filt-btn" data-period="90D">90D</button>
-    <button class="filt-btn" data-period="YTD">YTD</button>
-    <button class="filt-btn" data-period="ALL">ALL</button>
-  </div>
-  <div class="filt-grp">
-    <span class="filt-lbl">Outcome</span>
-    <select class="filt-sel" id="outcomeSel">
-      <option value="">All</option>
-      <option>Active</option>
-      <option>Scheduled</option>
-      <option>Admitted</option>
-      <option>AdmittedLegacy</option>
-      <option>Lost</option>
-      <option>Abandoned</option>
-    </select>
-  </div>
-  <div class="filt-grp">
-    <span class="filt-lbl">User</span>
-    <select class="filt-sel" id="userSel" multiple style="min-width:170px"></select>
-  </div>
-  <div class="filt-grp">
-    <span class="filt-lbl">View</span>
-    <button class="filt-btn active" data-view="human">Human Only</button>
-    <button class="filt-btn" data-view="all">+ Workflow</button>
-  </div>
-</div>
+<!-- MAIN LAYOUT: sidebar + content -->
+<div class="main-layout">
 
-<!-- Tab panels -->
-<div id="tab-overview"      class="tab-panel active"></div>
-<div id="tab-pipeline"      class="tab-panel"></div>
-<div id="tab-productivity"  class="tab-panel"></div>
-<div id="tab-effectiveness" class="tab-panel"></div>
-<div id="tab-flow"          class="tab-panel"></div>
-<div id="tab-trends"        class="tab-panel"></div>
+  <!-- LEFT SIDEBAR FILTER PANEL -->
+  <aside class="sidebar">
+    <div class="sb-grp">
+      <div class="sb-h">Period</div>
+      <div class="sb-row">
+        <button class="sb-btn" data-period="7D">7D</button>
+        <button class="sb-btn active" data-period="30D">30D</button>
+        <button class="sb-btn" data-period="90D">90D</button>
+      </div>
+      <div class="sb-row">
+        <button class="sb-btn" data-period="YTD">YTD</button>
+        <button class="sb-btn" data-period="ALL">ALL</button>
+        <button class="sb-btn" data-period="CUSTOM">CUSTOM</button>
+      </div>
+      <div class="sb-custom-dates" id="customDates">
+        <span class="sb-mini-lbl">From</span>
+        <input type="date" class="sb-input" id="customStart">
+        <span class="sb-mini-lbl">To</span>
+        <input type="date" class="sb-input" id="customEnd">
+      </div>
+    </div>
+
+    <div class="sb-grp">
+      <div class="sb-h">Group By</div>
+      <div class="sb-row">
+        <button class="sb-btn active" data-gran="day">DAY</button>
+        <button class="sb-btn" data-gran="week">WEEK</button>
+        <button class="sb-btn" data-gran="month">MONTH</button>
+      </div>
+    </div>
+
+    <div class="sb-grp">
+      <div class="sb-h">Outcome</div>
+      <select class="sb-sel" id="outcomeSel">
+        <option value="">All</option>
+        <option>Active</option>
+        <option>Scheduled</option>
+        <option>Admitted</option>
+        <option>AdmittedLegacy</option>
+        <option>Lost</option>
+        <option>Abandoned</option>
+      </select>
+    </div>
+
+    <div class="sb-grp">
+      <div class="sb-h">User</div>
+      <select class="sb-sel" id="userSel" multiple></select>
+    </div>
+
+    <div class="sb-grp">
+      <div class="sb-h">View</div>
+      <div class="sb-row">
+        <button class="sb-btn active" data-view="human">Human Only</button>
+      </div>
+      <div class="sb-row">
+        <button class="sb-btn" data-view="all">+ Workflow</button>
+      </div>
+    </div>
+
+    <div class="sb-grp">
+      <div class="sb-h">Actions</div>
+      <button class="sb-act-btn" id="exportXlsxBtn" title="Export current filtered view to a multi-sheet Excel workbook">EXPORT TO EXCEL</button>
+      <button class="sb-act-btn alt" id="clearFiltersBtn" title="Reset filters to defaults">CLEAR FILTERS</button>
+    </div>
+  </aside>
+
+  <!-- CONTENT AREA -->
+  <main class="content-area">
+    <div id="tab-overview"      class="tab-panel active"></div>
+    <div id="tab-pipeline"      class="tab-panel"></div>
+    <div id="tab-productivity"  class="tab-panel"></div>
+    <div id="tab-effectiveness" class="tab-panel"></div>
+    <div id="tab-flow"          class="tab-panel"></div>
+    <div id="tab-referrals"     class="tab-panel"></div>
+    <div id="tab-tasks"         class="tab-panel"></div>
+    <div id="tab-trends"        class="tab-panel"></div>
+  </main>
+</div>
 
 <div class="footer" id="footer"></div>
 
@@ -259,7 +403,6 @@ async function signIn(){
   setSigninError('');
   try {
     showSpinner('Signing in...');
-    // prompt:'select_account' lets user pick if multi-account
     var res = await msalInst.loginPopup({ scopes: ['User.Read'], prompt: 'select_account' });
     if (res && res.account){
       enterDashboard(res.account);
@@ -294,27 +437,28 @@ function rebuildSignInCard(){
 }
 
 function signOut(){
-  if (!msalInst) { location.reload(); return; }
-  var acc = msalInst.getActiveAccount() || (msalInst.getAllAccounts()[0]);
-  msalInst.logoutPopup({ account: acc, mainWindowRedirectUri: window.location.href }).catch(function(){
-    location.reload();
-  });
+  if (!msalInst) return;
+  try {
+    msalInst.logoutPopup({
+      postLogoutRedirectUri: window.location.origin + window.location.pathname
+    });
+  } catch(e){
+    console.error('Sign-out error:', e);
+    window.location.reload();
+  }
 }
 
 function enterDashboard(account){
   CURRENT_USER = account;
-  // Hide overlay, unlock body
   var ov = document.getElementById('signin-overlay');
   if (ov) ov.style.display = 'none';
   document.body.classList.remove('locked');
-  // Show user badge
   var name = account.name || account.username || 'User';
   var initials = name.split(/\s+/).map(function(s){return s[0]||'';}).join('').slice(0,2).toUpperCase() || '!?';
   document.getElementById('tbUser').style.display = 'flex';
   document.getElementById('tbAvatar').textContent = initials;
   document.getElementById('tbName').textContent = name;
   document.getElementById('tbName').title = account.username || '';
-  // Mount the dashboard
   bootstrapDashboard();
 }
 
@@ -331,7 +475,7 @@ async function authBoot(){
     msalInst = new msal.PublicClientApplication({
       auth: {
         clientId: AUTH.clientId,
-        authority: 'https://login.microsoftonline.com/' + AUTH.tenantId,  // single-tenant: rejects guest/personal accounts
+        authority: 'https://login.microsoftonline.com/' + AUTH.tenantId,
         redirectUri: window.location.origin + window.location.pathname,
       },
       cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false }
@@ -341,58 +485,114 @@ async function authBoot(){
     var accs = msalInst.getAllAccounts();
     if (accs.length){
       msalInst.setActiveAccount(accs[0]);
-      // Verify token can be silently acquired (still valid)
       try {
         await msalInst.acquireTokenSilent({ scopes: ['User.Read'], account: accs[0] });
         enterDashboard(accs[0]);
         return;
-      } catch (e) {
-        // Silent fail — fall through to button
-      }
+      } catch (e) { /* fall through to button */ }
     }
-    // Show sign-in button
     document.getElementById('signinBtn').onclick = signIn;
   } catch (e) {
     console.error(e);
     setSigninError('Auth init failed: ' + (e && e.message ? e.message : String(e)));
   }
 }
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', authBoot);
-else authBoot();
+authBoot();
 
-// ── DATA — replaced by build_crm.py ────────────────────────────────────────
-var OPPS  = /*INJECT_OPPS*/null;
-var ACTS  = /*INJECT_ACTS*/null;
-var USERS = /*INJECT_USERS*/null;
-var TASKS = /*INJECT_TASKS*/null;
-var META  = /*INJECT_META*/null;
+// ── DATA (injected by build_crm.py) ───────────────────────────────────────
+var OPPS  = /*INJECT_OPPS*/null  || [];
+var ACTS  = /*INJECT_ACTS*/null  || [];
+var USERS = /*INJECT_USERS*/null || [];
+var TASKS = /*INJECT_TASKS*/null || [];
+var DAILY = /*INJECT_DAILY*/null || {};
+var META  = /*INJECT_META*/null  || {"refreshed_at":"","opps_count":0,"acts_count":0,"users_count":0,"tasks_count":0,"open_tasks":0};
 
-// ── Filter state ──────────────────────────────────────────────────────────
-var FILTERS = { period: '30D', outcome: '', users: [], humanOnly: true };
+// ── FUNNEL_CONFIG (#2 — flexible stage funnel definition) ─────────────────
+// Renaming a stage in Sunwave? Update the matches[] strings below.
+// Reordering the funnel? Reorder the bands[] array.
+// Adding a new band? Insert a new {label, matches} object at the right index.
+// Anything matching no band and no side bucket appears in the "(unmapped)" call-out.
+var FUNNEL_CONFIG = {
+  bands: [
+    { label: 'Entered',    matches: ['Entered'] },
+    { label: 'VOB',        matches: ['VOB:'],         excludeIfContains: ['Refer Out'] },
+    { label: 'Pre-Screen', matches: ['Pre-Screen:'],  excludeIfContains: ['Refer Out'] },
+    { label: 'Priority',   matches: ['Priority:'] }
+  ],
+  sideBucket: { label: 'Refer Out', matches: ['Refer Out'] },
+  unmatchedLabel: '(unmapped)'
+};
+
+// ── Precompute lookup: oid → events sorted oldest→newest ──────────────────
+var ACTS_BY_OID = (function(){
+  var m = {};
+  for (var i = 0; i < ACTS.length; i++) {
+    var oid = ACTS[i].oid;
+    if (!oid) continue;
+    if (!m[oid]) m[oid] = [];
+    m[oid].push(ACTS[i]);
+  }
+  Object.keys(m).forEach(function(k){
+    m[k].sort(function(a,b){ return (pd(a.date)||new Date(0)) - (pd(b.date)||new Date(0)); });
+  });
+  return m;
+})();
+
+// ── State ─────────────────────────────────────────────────────────────────
+var FILTERS = {
+  period: '30D', customStart: null, customEnd: null,
+  gran: 'day',
+  outcome: '', users: [], humanOnly: true
+};
 var CHARTS = {};
 var SORT_STATE = {};
+var FLOW_EXPANDED = {};
+var MTX_COLLAPSED = {};   // matrix expand/collapse state per matrix per row
+var ACTMIX_SHOWALL = false;
 
-// ── Helpers ───────────────────────────────────────────────────────────────
-function pd(s) { if (!s) return null; var d = new Date(s); return isNaN(d) ? null : d; }
-function fmt(d) { if (!d) return ''; var m=(d.getMonth()+1)+''; var dd=d.getDate()+''; return (m.length<2?'0':'')+m+'/'+(dd.length<2?'0':'')+dd+'/'+d.getFullYear(); }
-function fmtDT(d) { if (!d) return ''; var t = d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true}); return fmt(d)+' '+t; }
-function esc(s) { if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function pct(n, d) { return d > 0 ? ((n/d)*100).toFixed(1)+'%' : '0%'; }
-function periodCutoff(p) {
+// ── Utility helpers ───────────────────────────────────────────────────────
+function pd(s){ if (!s) return null; var d = new Date(s); return isNaN(d.getTime()) ? null : d; }
+function fmt(d){ if (!d) return ''; return (d.getMonth()+1) + '/' + d.getDate() + '/' + String(d.getFullYear()).slice(2); }
+function fmtDT(d){ if (!d) return ''; return fmt(d) + ' ' + d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0'); }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function pct(num, den){ if (!den) return '0%'; return (num/den*100).toFixed(1)+'%'; }
+function median(a){ if (!a.length) return 0; var s = a.slice().sort(function(x,y){return x-y}); var m = Math.floor(s.length/2); return s.length%2 ? s[m] : (s[m-1]+s[m])/2; }
+function avg(a){ if (!a.length) return 0; return a.reduce(function(s,v){return s+v;},0) / a.length; }
+function clamp(n, lo, hi){ return Math.max(lo, Math.min(hi, n)); }
+
+// ── Filter helpers ────────────────────────────────────────────────────────
+function periodCutoff(p){
+  if (p === 'CUSTOM'){
+    var s = FILTERS.customStart ? new Date(FILTERS.customStart) : null;
+    var e = FILTERS.customEnd   ? new Date(FILTERS.customEnd)   : new Date();
+    if (s) s.setHours(0,0,0,0);
+    if (e) e.setHours(23,59,59,999);
+    return (s && e) ? {start: s, end: e} : null;
+  }
   var d = new Date(); d.setHours(0,0,0,0);
+  var end = new Date(); end.setHours(23,59,59,999);
   if (p === '7D') d.setDate(d.getDate()-7);
   else if (p === '30D') d.setDate(d.getDate()-30);
   else if (p === '90D') d.setDate(d.getDate()-90);
   else if (p === 'YTD') d = new Date(d.getFullYear(),0,1);
   else return null;
-  return d;
+  return {start: d, end: end};
 }
-function isHuman(a) { return a.type !== 'Workflow' && a.type !== 'Wave'; }
-function inPeriod(date) { var c = periodCutoff(FILTERS.period); if (!c) return true; var d = pd(date); return d && d >= c; }
-function userMatch(name) { return !FILTERS.users.length || FILTERS.users.indexOf(name) >= 0; }
-function outcomeMatch(o) { return !FILTERS.outcome || o.outcome === FILTERS.outcome; }
-function filteredOpps() { return OPPS.filter(outcomeMatch); }
-function filteredActs() {
+function inPeriod(date){
+  var c = periodCutoff(FILTERS.period);
+  if (!c) return true;
+  var d = pd(date);
+  if (!d) return false;
+  return d >= c.start && d <= c.end;
+}
+function isHuman(a){ return a.type !== 'Workflow' && a.type !== 'Wave'; }
+function isAdmitted(o){ return o.outcome === 'Admitted' || o.outcome === 'AdmittedLegacy'; }
+function isInPipe(o){ var s=(o.outcome||'').toLowerCase(); return s==='active' || s==='scheduled'; }
+function isLost(o){ return o.outcome === 'Lost' || o.outcome === 'Abandoned'; }
+function userMatch(name){ return !FILTERS.users.length || FILTERS.users.indexOf(name) >= 0; }
+function outcomeMatch(o){ return !FILTERS.outcome || o.outcome === FILTERS.outcome; }
+function filteredOpps(){ return OPPS.filter(outcomeMatch); }
+function filteredActs(){
   return ACTS.filter(function(a){
     if (FILTERS.humanOnly && !isHuman(a)) return false;
     if (!userMatch(a.by)) return false;
@@ -400,24 +600,348 @@ function filteredActs() {
     return true;
   });
 }
-function periodOpps() { return filteredOpps().filter(function(o){ return inPeriod(o.co); }); }
-function median(arr) { if(!arr.length) return 0; var s=arr.slice().sort(function(a,b){return a-b}); var m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; }
-function destroyChart(key) { if (CHARTS[key]) { CHARTS[key].destroy(); delete CHARTS[key]; } }
-function isAdmitted(o) { return o.outcome === 'Admitted' || o.outcome === 'AdmittedLegacy'; }
-function isInPipe(o) { var s=(o.outcome||'').toLowerCase(); return s==='active'||s==='scheduled'; }
-function isLost(o) { return o.outcome === 'Lost' || o.outcome === 'Abandoned'; }
+function periodOpps(){ return filteredOpps().filter(function(o){ return inPeriod(o.co); }); }
 
-// ── Tab nav ───────────────────────────────────────────────────────────────
-document.querySelectorAll('.tnav').forEach(function(b){
-  b.onclick = function() { showTab(b.dataset.tab, b); };
-});
-function showTab(name, btn) {
-  document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active')});
-  document.querySelectorAll('.tnav').forEach(function(b){b.classList.remove('active')});
+// ── Date aggregation (granularity rollups) ─────────────────────────────────
+function isoWeekKey(d){
+  var t = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  var dayNum = (t.getDay() + 6) % 7;
+  t.setDate(t.getDate() - dayNum + 3);
+  var firstThu = new Date(t.getFullYear(),0,4);
+  var diffMs = t - firstThu;
+  var weekNum = 1 + Math.round((diffMs/86400000 - 3 + ((firstThu.getDay()+6)%7)) / 7);
+  return t.getFullYear() + '-W' + String(weekNum).padStart(2,'0');
+}
+function granKey(date, gran){
+  if (gran === 'week') return isoWeekKey(date);
+  if (gran === 'month') return date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2,'0');
+  return date.toISOString().slice(0,10);
+}
+function periodDateRange(){
+  var c = periodCutoff(FILTERS.period);
+  var start, end;
+  if (c){ start = c.start; end = c.end; }
+  else {
+    var keys = Object.keys(DAILY).sort();
+    if (!keys.length){
+      end = new Date(); end.setHours(0,0,0,0);
+      start = new Date(end); start.setDate(start.getDate()-90);
+    } else {
+      start = new Date(keys[0]); end = new Date(keys[keys.length-1]);
+    }
+  }
+  var out = [];
+  var cur = new Date(start); cur.setHours(0,0,0,0);
+  var stop = new Date(end);  stop.setHours(0,0,0,0);
+  while (cur <= stop){
+    out.push(new Date(cur));
+    cur.setDate(cur.getDate()+1);
+  }
+  return out;
+}
+function aggregateDates(days, gran, valueOf){
+  var buckets = {};
+  var order = [];
+  days.forEach(function(d){
+    var k = granKey(d, gran);
+    if (!(k in buckets)){ buckets[k] = null; order.push(k); }
+    var v = valueOf(d);
+    if (typeof v === 'number'){
+      buckets[k] = (buckets[k]||0) + v;
+    } else if (v && typeof v === 'object'){
+      if (!buckets[k]) buckets[k] = {};
+      Object.keys(v).forEach(function(kk){ buckets[k][kk] = (buckets[k][kk]||0) + v[kk]; });
+    }
+  });
+  return { labels: order, values: order.map(function(k){ return buckets[k]; }) };
+}
+function periodLabel(){
+  if (FILTERS.period === 'CUSTOM'){
+    var s = FILTERS.customStart, e = FILTERS.customEnd;
+    return s && e ? (s + ' → ' + e) : 'CUSTOM';
+  }
+  return FILTERS.period;
+}
+function granLabel(){ return FILTERS.gran.toUpperCase(); }
+
+// ── Chart utilities ───────────────────────────────────────────────────────
+function destroyChart(k){ if (CHARTS[k] && CHARTS[k].destroy){ CHARTS[k].destroy(); } delete CHARTS[k]; }
+function kpi(cls, lbl, val, sub){
+  return '<div class="kpi ' + cls + '"><div class="kpi-lbl">' + esc(lbl) + '</div><div class="kpi-val">' + esc(val) + '</div>' + (sub ? '<div class="kpi-sub">' + esc(sub) + '</div>' : '') + '</div>';
+}
+
+// ── Heatmap color util ───────────────────────────────────────────────────
+function heatColor(value, max, baseRgb){
+  // baseRgb = [r,g,b] for the navy variant, etc.
+  if (!max || value <= 0) return '#fff';
+  var alpha = Math.min(0.85, 0.07 + (value/max) * 0.78);
+  return 'rgba(' + baseRgb[0] + ',' + baseRgb[1] + ',' + baseRgb[2] + ',' + alpha.toFixed(2) + ')';
+}
+function heatColorRedGreen(pctVal){
+  // pctVal 0..1 — red→amber→green
+  if (pctVal == null || isNaN(pctVal)) return '#fff';
+  var p = clamp(pctVal, 0, 1);
+  // Hue from 0 (red) to 130 (green)
+  var hue = Math.round(p * 130);
+  return 'hsl(' + hue + ', 60%, 88%)';
+}
+
+// ── SHARED TRENDING MATRIX RENDERER (#3 #4 #6 #9) ────────────────────────
+// Renders rows × time-period matrix with:
+//   - per-row heatmap
+//   - frozen left label + frozen right Period Total
+//   - count + optional pct cell
+//   - optional sub-rows (collapsible)
+//   - optional totals row, admit-rate row
+//
+// rowDef: { id, label, expandable, collapsed, sub:[{id,label,values:[]}], values:[number per period], total:number }
+// columns: [{key, label}]
+// opts: { showPct: bool, totalsRow: {label, values, total}, admitRateRow: {label, values, total},
+//         heatRgb: [r,g,b], matrixId: 'unique-id' }
+function renderMatrix(rows, columns, opts){
+  opts = opts || {};
+  var heatRgb = opts.heatRgb || [10, 61, 92];
+  var matrixId = opts.matrixId || ('mtx-' + Math.random().toString(36).slice(2,8));
+
+  // Per-row max for heatmap
+  function rowMax(values){ var m = 0; values.forEach(function(v){ if (v > m) m = v; }); return m; }
+
+  var html = '<div class="matrix-wrap"><table class="mtx" id="' + matrixId + '"><thead><tr>';
+  html += '<th class="lbl">' + esc(opts.firstColLabel || '') + '</th>';
+  columns.forEach(function(c){
+    html += '<th>' + esc(c.label) + '</th>';
+  });
+  html += '<th class="total-col">' + esc(opts.totalColLabel || 'TOTAL') + '</th>';
+  html += '</tr></thead><tbody>';
+
+  if (!rows.length){
+    html += '<tr><td class="lbl">' + (opts.emptyLabel || 'No data.') + '</td>';
+    columns.forEach(function(){ html += '<td></td>'; });
+    html += '<td class="total-col"></td></tr>';
+  }
+
+  rows.forEach(function(row){
+    var rmax = rowMax(row.values);
+    var collapsedAttr = row.collapsed ? ' collapsed' : '';
+    var clickable = row.expandable ? ' expandable' : '';
+    var onclick = row.expandable ? ' onclick="toggleMatrixRow(\'' + matrixId + '\',\'' + esc(row.id) + '\')"' : '';
+    html += '<tr class="' + (clickable + collapsedAttr).trim() + '"' + onclick + '>';
+    html += '<td class="lbl">' + esc(row.label) + '</td>';
+    row.values.forEach(function(v, i){
+      var bg = heatColor(v, rmax, heatRgb);
+      var pctStr = '';
+      if (opts.showPct && opts.totalsRow && opts.totalsRow.values[i] > 0){
+        pctStr = '<span class="mtx-cell-pct">' + (v/opts.totalsRow.values[i]*100).toFixed(0) + '%</span>';
+      }
+      var cellTxt = (v > 0) ? '<span class="mtx-cell-num">' + v + '</span>' : '<span style="color:#cbd5e1">0</span>';
+      html += '<td style="background:' + bg + '">' + cellTxt + pctStr + '</td>';
+    });
+    html += '<td class="total-col">' + (row.total||0) + '</td>';
+    html += '</tr>';
+
+    // Sub-rows (only render if not collapsed)
+    if (row.expandable && !row.collapsed && row.sub){
+      row.sub.forEach(function(sub){
+        html += '<tr class="sub-row" data-parent="' + esc(row.id) + '">';
+        html += '<td class="lbl sub">' + esc(sub.label) + '</td>';
+        sub.values.forEach(function(v){
+          var cellTxt = (v > 0) ? '<span class="mtx-cell-num" style="font-weight:500;color:var(--muted)">' + v + '</span>' : '<span style="color:#cbd5e1">0</span>';
+          html += '<td>' + cellTxt + '</td>';
+        });
+        html += '<td class="total-col" style="background:#f8fafc;font-weight:500;color:var(--muted)">' + (sub.total||0) + '</td>';
+        html += '</tr>';
+      });
+    }
+  });
+
+  // Totals row
+  if (opts.totalsRow){
+    html += '<tr class="totals"><td class="lbl">' + esc(opts.totalsRow.label || 'TOTAL') + '</td>';
+    opts.totalsRow.values.forEach(function(v){ html += '<td>' + (v||0) + '</td>'; });
+    html += '<td class="total-col">' + (opts.totalsRow.total||0) + '</td></tr>';
+  }
+  // Admit rate row
+  if (opts.admitRateRow){
+    html += '<tr class="admit-rate-row"><td class="lbl">' + esc(opts.admitRateRow.label || 'ADMIT RATE') + '</td>';
+    opts.admitRateRow.values.forEach(function(v){
+      var bg = (v != null && !isNaN(v)) ? heatColorRedGreen(v) : '#fff';
+      var disp = (v != null && !isNaN(v)) ? (v*100).toFixed(0) + '%' : '—';
+      html += '<td style="background:' + bg + '">' + disp + '</td>';
+    });
+    var tot = opts.admitRateRow.total;
+    var totDisp = (tot != null && !isNaN(tot)) ? (tot*100).toFixed(0) + '%' : '—';
+    html += '<td class="total-col">' + totDisp + '</td></tr>';
+  }
+
+  html += '</tbody></table></div>';
+  return html;
+}
+
+function toggleMatrixRow(matrixId, rowId){
+  var key = matrixId + '|' + rowId;
+  MTX_COLLAPSED[key] = !MTX_COLLAPSED[key];
+  // Find the active tab and re-render — simpler than DOM manipulation
+  var active = document.querySelector('.tnav.active');
+  if (active) buildTab(active.dataset.tab);
+}
+function isMatrixRowCollapsed(matrixId, rowId){
+  return !!MTX_COLLAPSED[matrixId + '|' + rowId];
+}
+
+// ── Generic trend chart helper ───────────────────────────────────────────
+function buildTrendCard(title, sub, canvasId){
+  var html = '<div class="card"><div class="card-h"><div><div class="card-title">' + esc(title) + '</div><div class="card-sub">' + esc(sub) + '</div></div></div>';
+  html += '<div class="chart-wrap"><canvas id="' + canvasId + '"></canvas></div></div>';
+  return html;
+}
+function renderTrendChart(canvasId, labels, datasets, type){
+  type = type || 'bar';
+  destroyChart(canvasId);
+  var el = document.getElementById(canvasId);
+  if (!el) return;
+  CHARTS[canvasId] = new Chart(el, {
+    type: type,
+    data: { labels: labels, datasets: datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { stacked: type === 'bar', ticks:{ font:{size:9}, maxTicksLimit:14 } },
+        y: { stacked: type === 'bar', beginAtZero: true, ticks:{ font:{size:10} } }
+      },
+      plugins: { legend:{ position:'top', labels:{ font:{size:10}, boxWidth:12 } }, tooltip:{ mode:'index', intersect:false } },
+      elements: { point: { radius: type === 'line' ? 0 : 3 } }
+    }
+  });
+}
+
+// ── Sales Funnel renderer (#2) ───────────────────────────────────────────
+function classifyStageForFunnel(stage){
+  // Returns: { band: bandLabel | null, isSide: bool, isUnmapped: bool }
+  if (!stage){ return { band: null, isSide: false, isUnmapped: true }; }
+
+  // Side bucket check first (Refer Out wins regardless of where it appears)
+  var s = stage;
+  for (var j = 0; j < FUNNEL_CONFIG.sideBucket.matches.length; j++){
+    if (s.indexOf(FUNNEL_CONFIG.sideBucket.matches[j]) >= 0){
+      return { band: null, isSide: true, isUnmapped: false };
+    }
+  }
+
+  // Try each band
+  for (var i = 0; i < FUNNEL_CONFIG.bands.length; i++){
+    var band = FUNNEL_CONFIG.bands[i];
+    var matched = false;
+    for (var j = 0; j < band.matches.length; j++){
+      if (s.indexOf(band.matches[j]) >= 0){ matched = true; break; }
+    }
+    if (!matched) continue;
+    if (band.excludeIfContains){
+      var excluded = false;
+      for (var k = 0; k < band.excludeIfContains.length; k++){
+        if (s.indexOf(band.excludeIfContains[k]) >= 0){ excluded = true; break; }
+      }
+      if (excluded) continue;
+    }
+    return { band: band.label, isSide: false, isUnmapped: false };
+  }
+  return { band: null, isSide: false, isUnmapped: true };
+}
+
+function renderFunnel(opps){
+  // Bucket opps by funnel band
+  var bandCounts = {}; FUNNEL_CONFIG.bands.forEach(function(b){ bandCounts[b.label] = 0; });
+  var sideCount = 0, unmappedCount = 0;
+  var unmappedStages = {};
+  opps.forEach(function(o){
+    var c = classifyStageForFunnel(o.stage);
+    if (c.band){ bandCounts[c.band]++; }
+    else if (c.isSide){ sideCount++; }
+    else if (c.isUnmapped){
+      unmappedCount++;
+      unmappedStages[o.stage || '(none)'] = (unmappedStages[o.stage || '(none)']||0) + 1;
+    }
+  });
+
+  var entered = bandCounts[FUNNEL_CONFIG.bands[0].label] || 0;
+  // Compute max band width for visual scaling
+  var bandValues = FUNNEL_CONFIG.bands.map(function(b){ return bandCounts[b.label] || 0; });
+  var maxBand = Math.max.apply(null, bandValues.concat([1]));
+
+  var html = '<div class="funnel">';
+  FUNNEL_CONFIG.bands.forEach(function(b, idx){
+    var count = bandCounts[b.label] || 0;
+    var width = clamp(Math.round((count / maxBand) * 100), 18, 100);
+    var pctEntered = entered > 0 ? (count / entered * 100).toFixed(0) : '—';
+    html += '<div class="funnel-band">';
+    html += '  <div class="funnel-bar" style="width:' + width + '%">';
+    html += '    <span class="funnel-bar-label">' + esc(b.label) + '</span>';
+    html += '    <span class="funnel-bar-stats">';
+    html += '      <span class="funnel-bar-count">' + count + '</span>';
+    if (idx > 0) html += '<span class="funnel-bar-pct">' + pctEntered + '% of Entered</span>';
+    html += '    </span>';
+    html += '  </div>';
+    html += '</div>';
+    // Between-band conversion arrow (except after last band)
+    if (idx < FUNNEL_CONFIG.bands.length - 1){
+      var nextCount = bandCounts[FUNNEL_CONFIG.bands[idx+1].label] || 0;
+      var conv = (count > 0) ? (nextCount / count * 100).toFixed(0) + '%' : '—';
+      html += '<div class="funnel-arrow">' + esc(b.label) + ' → ' + esc(FUNNEL_CONFIG.bands[idx+1].label) + ': <strong>' + conv + '</strong></div>';
+    }
+  });
+  html += '</div>';
+
+  // Side bucket
+  if (sideCount > 0){
+    html += '<div class="funnel-side">' + esc(FUNNEL_CONFIG.sideBucket.label) + ': <strong>' + sideCount + '</strong> opps left the funnel</div>';
+  }
+  // Unmapped
+  if (unmappedCount > 0){
+    var unmappedLbl = Object.keys(unmappedStages).map(function(k){ return esc(k) + ' (' + unmappedStages[k] + ')'; }).join(', ');
+    html += '<div class="funnel-unmapped">' + esc(FUNNEL_CONFIG.unmatchedLabel) + ': ' + unmappedCount + ' opps · ' + unmappedLbl + '</div>';
+  }
+
+  return html;
+}
+
+// ── Methodology footnote helper ──────────────────────────────────────────
+function methodology(htmlContent){
+  return '<div class="methodology"><div class="methodology-h">How this is calculated</div>' + htmlContent + '</div>';
+}
+
+// ── TTD/TSA helpers (#5) ─────────────────────────────────────────────────
+// Computes days between two dates (string or Date), null if invalid
+function daysBetween(d1, d2){
+  var a = (d1 instanceof Date) ? d1 : pd(d1);
+  var b = (d2 instanceof Date) ? d2 : pd(d2);
+  if (!a || !b) return null;
+  var diff = (b - a) / 86400000;
+  return diff < 0 ? null : diff;
+}
+function bucketDays(d){
+  if (d == null) return null;
+  if (d <= 1) return 0;
+  if (d <= 3) return 1;
+  if (d <= 7) return 2;
+  if (d <= 14) return 3;
+  if (d <= 30) return 4;
+  if (d <= 60) return 5;
+  return 6;
+}
+var BUCKET_LABELS = ['0-1d','2-3d','4-7d','8-14d','15-30d','31-60d','60d+'];
+
+// ── Tab dispatch ──────────────────────────────────────────────────────────
+function rebuildAll(){
+  Object.keys(CHARTS).forEach(destroyChart);
+  var active = document.querySelector('.tnav.active');
+  if (active) buildTab(active.dataset.tab);
+}
+function showTab(name, btn){
+  document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.tnav').forEach(function(b){ b.classList.remove('active'); });
   document.getElementById('tab-'+name).classList.add('active');
   if (btn) btn.classList.add('active');
   buildTab(name);
-  window.scrollTo({top:0,behavior:'smooth'});
+  window.scrollTo({top:0, behavior:'smooth'});
 }
 function buildTab(n){
   if      (n === 'overview')      buildOverview();
@@ -425,64 +949,19 @@ function buildTab(n){
   else if (n === 'productivity')  buildProductivity();
   else if (n === 'effectiveness') buildEffectiveness();
   else if (n === 'flow')          buildFlow();
+  else if (n === 'referrals')     buildReferrals();
+  else if (n === 'tasks')         buildTasks();
   else if (n === 'trends')        buildTrends();
 }
 
-// ── Filter handlers ───────────────────────────────────────────────────────
-document.querySelectorAll('.filt-btn[data-period]').forEach(function(b){
-  b.onclick = function() {
-    document.querySelectorAll('.filt-btn[data-period]').forEach(function(x){x.classList.remove('active')});
-    b.classList.add('active'); FILTERS.period = b.dataset.period; rebuildAll();
-  };
-});
-document.querySelectorAll('.filt-btn[data-view]').forEach(function(b){
-  b.onclick = function() {
-    document.querySelectorAll('.filt-btn[data-view]').forEach(function(x){x.classList.remove('active')});
-    b.classList.add('active'); FILTERS.humanOnly = (b.dataset.view === 'human'); rebuildAll();
-  };
-});
-document.getElementById('outcomeSel').onchange = function(e){
-  FILTERS.outcome = e.target.value; rebuildAll();
-};
-document.getElementById('userSel').onchange = function(e){
-  var sel = []; for (var i=0;i<e.target.options.length;i++) if (e.target.options[i].selected) sel.push(e.target.options[i].value);
-  FILTERS.users = sel; rebuildAll();
-};
-function rebuildAll() {
-  Object.keys(CHARTS).forEach(destroyChart);
-  var active = document.querySelector('.tnav.active');
-  if (active) buildTab(active.dataset.tab);
-}
-
-// Populate user select with activity counts
-(function() {
-  var sel = document.getElementById('userSel');
-  var counts = {};
-  ACTS.forEach(function(a){ if (a.by && isHuman(a)) counts[a.by] = (counts[a.by]||0)+1; });
-  var sorted = Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; });
-  sorted.forEach(function(n){
-    var o = document.createElement('option'); o.value = n; o.textContent = n+' ('+counts[n]+')';
-    sel.appendChild(o);
-  });
-})();
-
-// Populate sync label
-(function(){
-  if (META && META.refreshed_at) {
-    var d = new Date(META.refreshed_at);
-    document.getElementById('syncLbl').textContent = 'synced ' + d.toLocaleString();
-  }
-  document.getElementById('footer').innerHTML = META ? (META.opps_count + ' opportunities · ' + META.acts_count + ' activities · ' + META.users_count + ' users · ' + META.tasks_count + ' tasks') : '';
-})();
-
-// ──────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────
 // OVERVIEW
-// ──────────────────────────────────────────────────────────────────
-function buildOverview() {
+// ──────────────────────────────────────────────────────────────────────────
+function buildOverview(){
   var oppsP = periodOpps();
   var actsP = filteredActs();
   var allFilteredOpps = filteredOpps();
-  var p = FILTERS.period;
+  var p = periodLabel();
   var now = new Date(); now.setHours(0,0,0,0);
 
   var total    = oppsP.length;
@@ -493,12 +972,14 @@ function buildOverview() {
   var html = '';
   html += '<div class="kpis">';
   html += kpi('navy',  'Created (' + p + ')', total);
-  html += kpi('green', 'Admitted', admitted);
+  html += kpi('green', 'Admitted', admitted, pct(admitted, total) + ' admit rate');
   html += kpi('teal',  'Admit Rate', pct(admitted, total));
   html += kpi('blue',  'In Pipeline', inPipe);
   html += kpi('red',   'Lost / Abandoned', lost);
   html += kpi('amber', 'Activities (' + p + ')', actsP.length);
   html += '</div>';
+
+  html += buildTrendCard('Outcome Trend', 'Created vs Admitted vs Lost/Abandoned · ' + p + ' · grouped by ' + granLabel(), 'ch-ov-trend');
 
   // Activity Leaderboard
   var lb = {};
@@ -512,7 +993,6 @@ function buildOverview() {
   var lbArr = Object.keys(lb).map(function(k){ return { name:k, total:lb[k].total, opps:lb[k].opps.size, types:lb[k].types }; });
   lbArr.sort(function(a,b){ return b.total - a.total; });
 
-  // Multi-touch admit credit
   var admittedOids = new Set(allFilteredOpps.filter(isAdmitted).filter(function(o){ return inPeriod(o.admit) || inPeriod(o.co); }).map(function(o){ return o.id; }));
   var admitCredit = {};
   ACTS.forEach(function(a){
@@ -534,20 +1014,19 @@ function buildOverview() {
   });
   html += '</tbody></table></div></div>';
 
-  // Recent Admissions
   var recent = allFilteredOpps.filter(isAdmitted).slice().sort(function(a,b){
     return (pd(b.admit)||pd(b.co)||new Date(0)) - (pd(a.admit)||pd(a.co)||new Date(0));
   }).slice(0,12);
   html += '<div class="card"><div class="card-h"><div><div class="card-title">Recent Admissions</div><div class="card-sub">Closer = last human activity</div></div></div>';
-  html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Patient</th><th>Admit</th><th>Closer</th></tr></thead><tbody>';
-  if (!recent.length) html += '<tr><td colspan="3" class="empty">No admissions.</td></tr>';
+  html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Patient</th><th>Admit</th><th>Closer</th><th>Rep</th></tr></thead><tbody>';
+  if (!recent.length) html += '<tr><td colspan="4" class="empty">No admissions.</td></tr>';
   recent.forEach(function(o){
     var oacts = ACTS.filter(function(a){ return a.oid === o.id && isHuman(a); });
     oacts.sort(function(a,b){ return (pd(b.date)||new Date(0)) - (pd(a.date)||new Date(0)); });
     var closer = oacts.length ? oacts[0].by : '—';
-    html += '<tr><td>'+esc(o.name)+'</td><td><span class="badge b-green">'+(o.admit?fmt(pd(o.admit)):'—')+'</span></td><td>'+esc(closer)+'</td></tr>';
+    html += '<tr><td>'+esc(o.name)+'</td><td><span class="badge b-green">'+(o.admit?fmt(pd(o.admit)):'—')+'</span></td><td>'+esc(closer)+'</td><td style="color:var(--muted);font-size:11px">'+esc(o.rep||'—')+'</td></tr>';
   });
-  html += '</tbody></table></div></div></div>';
+  html += '</tbody></table></div></div>';
 
   // Stuck opportunities
   var stuck = OPPS.filter(function(o){
@@ -567,164 +1046,404 @@ function buildOverview() {
 
   html += '<div class="g2">';
   html += '<div class="card"><div class="card-h"><div><div class="card-title">Stuck Opportunities (' + stuck.length + ')</div><div class="card-sub">Active · &gt;7d no human activity · amber @14d · red @30d</div></div></div>';
-  html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Patient</th><th>Stage</th><th>Last Touch</th><th class="num">Days</th></tr></thead><tbody>';
-  if (!stuck.length) html += '<tr><td colspan="4" class="empty">No stuck opportunities.</td></tr>';
+  html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Patient</th><th>Stage</th><th>Last Touch</th><th>Rep</th><th class="num">Days</th></tr></thead><tbody>';
+  if (!stuck.length) html += '<tr><td colspan="5" class="empty">No stuck opportunities.</td></tr>';
   stuck.slice(0,30).forEach(function(o){
     var cls = o._stuck >= 30 ? 'b-red' : (o._stuck >= 14 ? 'b-amber' : 'b-blue');
-    html += '<tr><td>'+esc(o.name)+'</td><td>'+esc(o.stage)+'</td><td>'+esc(o._lastTouch)+'</td><td class="num"><span class="badge '+cls+'">'+o._stuck+'d</span></td></tr>';
+    html += '<tr><td>'+esc(o.name)+'</td><td>'+esc(o.stage)+'</td><td>'+esc(o._lastTouch)+'</td><td style="color:var(--muted);font-size:11px">'+esc(o.rep||'—')+'</td><td class="num"><span class="badge '+cls+'">'+o._stuck+'d</span></td></tr>';
   });
   html += '</tbody></table></div></div>';
 
-  // Open CRM Tasks
   var openTasks = TASKS.filter(function(t){ return t.is_open; }).slice().sort(function(a,b){
     return (pd(a.due)||new Date(8e15)) - (pd(b.due)||new Date(8e15));
   });
-  html += '<div class="card"><div class="card-h"><div><div class="card-title">Open CRM Tasks (' + openTasks.length + ')</div><div class="card-sub">Sorted by due date</div></div></div>';
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Open CRM Tasks (' + openTasks.length + ')</div><div class="card-sub">Sorted by due date · full list on Tasks tab</div></div></div>';
   html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Subject</th><th>Type</th><th>Assigned</th><th>Due</th></tr></thead><tbody>';
   if (!openTasks.length) html += '<tr><td colspan="4" class="empty">No open tasks.</td></tr>';
-  openTasks.forEach(function(t){
+  openTasks.slice(0,8).forEach(function(t){
     var due = pd(t.due);
     var overdue = due && due < now;
     var cls = overdue ? 'b-red' : 'b-muted';
     html += '<tr><td>'+esc(t.subject)+'</td><td>'+esc(t.task_type)+'</td><td>'+esc(t.assigned)+'</td><td><span class="badge '+cls+'">'+(due?fmt(due):'—')+(overdue?' ⚠':'')+'</span></td></tr>';
   });
-  html += '</tbody></table></div></div></div>';
+  html += '</tbody></table></div></div>';
 
   document.getElementById('tab-overview').innerHTML = html;
+
+  // Render trend chart
+  var days = periodDateRange();
+  var oppsByCo = {};
+  var oppsByAdmit = {};
+  oppsP.forEach(function(o){
+    if (o.co){
+      var k = pd(o.co); if (k){
+        var ks = k.toISOString().slice(0,10);
+        oppsByCo[ks] = oppsByCo[ks] || { c:0, a:0, l:0 };
+        oppsByCo[ks].c++;
+        if (isLost(o)) oppsByCo[ks].l++;
+      }
+    }
+    if (isAdmitted(o) && o.admit){
+      var ka = pd(o.admit); if (ka){
+        var kas = ka.toISOString().slice(0,10);
+        oppsByAdmit[kas] = (oppsByAdmit[kas]||0) + 1;
+      }
+    }
+  });
+  var agg = aggregateDates(days, FILTERS.gran, function(d){
+    var ks = d.toISOString().slice(0,10);
+    var co = oppsByCo[ks] || { c:0, l:0 };
+    return { Created: co.c, Admitted: oppsByAdmit[ks]||0, Lost: co.l };
+  });
+  renderTrendChart('ch-ov-trend', agg.labels, [
+    { label:'Created',  data:agg.values.map(function(v){return v.Created||0}),  backgroundColor:'#0a3d5c', borderRadius:3, stack:'A' },
+    { label:'Admitted', data:agg.values.map(function(v){return v.Admitted||0}), backgroundColor:'#10b981', borderRadius:3, stack:'B' },
+    { label:'Lost/Aband', data:agg.values.map(function(v){return v.Lost||0}),    backgroundColor:'#ef4444', borderRadius:3, stack:'C' }
+  ], 'bar');
 }
 
-function kpi(color, lbl, val, sub) {
-  var s = sub ? '<div class="kpi-sub">' + esc(sub) + '</div>' : '';
-  return '<div class="kpi ' + color + '"><div class="kpi-lbl">' + esc(lbl) + '</div><div class="kpi-val">' + esc(val) + '</div>' + s + '</div>';
-}
-
-// ──────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────
 // PIPELINE & FUNNEL
-// ──────────────────────────────────────────────────────────────────
-function buildPipeline() {
+// ──────────────────────────────────────────────────────────────────────────
+function buildPipeline(){
   var oppsP = periodOpps();
-  var p = FILTERS.period;
+  var p = periodLabel();
 
-  // Funnel: Created → Active/Sched → Admitted, with lost/abandoned breakouts
   var counts = {
     created: oppsP.length,
     active: oppsP.filter(function(o){ return o.outcome==='Active'; }).length,
     scheduled: oppsP.filter(function(o){ return o.outcome==='Scheduled'; }).length,
     admitted: oppsP.filter(isAdmitted).length,
     lost: oppsP.filter(function(o){ return o.outcome==='Lost'; }).length,
-    abandoned: oppsP.filter(function(o){ return o.outcome==='Abandoned'; }).length,
+    abandoned: oppsP.filter(function(o){ return o.outcome==='Abandoned'; }).length
   };
 
   var html = '';
+  // KPIs reordered (#1): Created · Admitted · Lost · Abandoned · Active · Scheduled
   html += '<div class="kpis">';
   html += kpi('navy',  'Created', counts.created);
-  html += kpi('blue',  'Active', counts.active);
-  html += kpi('purple','Scheduled', counts.scheduled);
   html += kpi('green', 'Admitted', counts.admitted, pct(counts.admitted, counts.created) + ' of created');
   html += kpi('amber', 'Lost', counts.lost);
   html += kpi('red',   'Abandoned', counts.abandoned);
+  html += kpi('blue',  'Active', counts.active);
+  html += kpi('purple','Scheduled', counts.scheduled);
   html += '</div>';
 
+  // v2 trending — funnel over time
+  html += buildTrendCard('Funnel Trend', 'Admitted vs Lost vs Abandoned per ' + granLabel() + ' · ' + p, 'ch-pl-trend');
+
+  // ── Sales Funnel (#2) — replaces Stage Distribution chart ─────────────
+  html += '<div class="card">';
+  html += '<div class="card-h"><div><div class="card-title">Stage Funnel</div><div class="card-sub">Snapshot of where opportunities sit RIGHT NOW · ' + p + ' · Refer Out excluded · stages re-config in FUNNEL_CONFIG</div></div></div>';
+  html += renderFunnel(oppsP);
+  html += '</div>';
+
+  // ── Outcome Distribution → Trending Matrix (#3) ───────────────────────
+  html += '<div class="card">';
+  html += '<div class="card-h"><div><div class="card-title">Outcome Distribution Trend</div><div class="card-sub">Outcomes per ' + granLabel() + ' · newest first · ' + p + ' · scroll horizontally for older periods</div></div></div>';
+  html += renderOutcomeMatrix(oppsP);
+  html += '</div>';
+
+  // ── Lost & Abandoned Reasons → Trending Matrices (#4) ─────────────────
   html += '<div class="g2">';
-  html += '<div class="card"><div class="card-h"><div><div class="card-title">Stage Distribution</div><div class="card-sub">By current stage · ' + p + '</div></div></div>';
-  html += '<div class="chart-wrap"><canvas id="ch-stage"></canvas></div></div>';
+  html += '<div class="card">';
+  html += '<div class="card-h"><div><div class="card-title">Lost Reasons Trend</div><div class="card-sub">Why opportunities are lost · per ' + granLabel() + ' · ' + p + '</div></div></div>';
+  html += renderReasonMatrix(oppsP, 'Lost', 'lost_r');
+  html += '</div>';
+  html += '<div class="card">';
+  html += '<div class="card-h"><div><div class="card-title">Abandoned Reasons Trend</div><div class="card-sub">Why opportunities are abandoned · per ' + granLabel() + ' · ' + p + '</div></div></div>';
+  html += renderReasonMatrix(oppsP, 'Abandoned', 'aband_r');
+  html += '</div>';
+  html += '</div>';
 
-  html += '<div class="card"><div class="card-h"><div><div class="card-title">Outcome Distribution</div><div class="card-sub">Conversion mix · ' + p + '</div></div></div>';
-  html += '<div class="chart-wrap"><canvas id="ch-outcome"></canvas></div></div></div>';
+  // ── Time-to-outcome small multiples (#5) ──────────────────────────────
+  var ttDiag = (META.ttd_diagnostics || {});
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Time-to-Outcome Distribution</div><div class="card-sub">Days from creation to resolution · ' + p + ' · 4 small multiples</div></div></div>';
+  html += '<div class="g4">';
+  html += renderTimeBucketCard('TTA', 'Time to Admit', ttaData(oppsP), 'green', false);
+  html += renderTimeBucketCard('TTD-Lost', 'Time to Lost decision', ttdLostData(oppsP), 'amber', anyProxy(oppsP, 'Lost'));
+  html += renderTimeBucketCard('TTD-Aband', 'Time to Abandoned decision', ttdAbandData(oppsP), 'red', anyProxy(oppsP, 'Abandoned'));
+  html += renderTimeBucketCard('TSA', 'Time Scheduled to Admit', tsaData(oppsP), 'navy', anyProxyTSA(oppsP));
+  html += '</div>';
+  html += '</div>';
 
-  // Lost / Abandoned reasons
-  var lostMap = {}, abMap = {};
+  // ── Insurance / Payer mix (kept) — Top Referral Sources moved to new tab ──
+  var insMap = {};
   oppsP.forEach(function(o){
-    if (o.outcome === 'Lost' && o.lost_r) lostMap[o.lost_r] = (lostMap[o.lost_r]||0)+1;
-    if (o.outcome === 'Abandoned' && o.aband_r) abMap[o.aband_r] = (abMap[o.aband_r]||0)+1;
+    var key = (o.ins||'').trim() || '(unspecified)';
+    if (!insMap[key]) insMap[key] = { total:0, admitted:0, lost:0, aband:0 };
+    insMap[key].total++;
+    if (isAdmitted(o)) insMap[key].admitted++;
+    else if (o.outcome === 'Lost') insMap[key].lost++;
+    else if (o.outcome === 'Abandoned') insMap[key].aband++;
   });
-  html += '<div class="g2">';
-  html += '<div class="card"><div class="card-h"><div><div class="card-title">Lost Reasons</div><div class="card-sub">Why opportunities are lost · ' + p + '</div></div></div>';
-  html += renderReasonTable(lostMap, counts.lost);
-  html += '</div>';
-  html += '<div class="card"><div class="card-h"><div><div class="card-title">Abandoned Reasons</div><div class="card-sub">Why opportunities are abandoned · ' + p + '</div></div></div>';
-  html += renderReasonTable(abMap, counts.abandoned);
-  html += '</div></div>';
+  var insRows = Object.keys(insMap).map(function(k){
+    var m = insMap[k];
+    return { name:k, total:m.total, admitted:m.admitted, lost:m.lost, aband:m.aband, rate: m.total ? m.admitted/m.total : 0 };
+  }).sort(function(a,b){ return b.total - a.total; });
 
-  // Time to admit distribution (admit_date - created_on)
-  var ttaDays = oppsP.filter(isAdmitted).map(function(o){
-    var c = pd(o.co), a = pd(o.admit);
-    if (!c || !a) return null;
-    return Math.max(0, Math.floor((a-c)/86400000));
-  }).filter(function(d){ return d !== null; });
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Insurance / Payer Mix</div><div class="card-sub">Volume and admit rate by payer · ' + p + '</div></div></div>';
+  html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Payer</th><th class="num">Volume</th><th class="num">Admitted</th><th class="num">Lost</th><th class="num">Aband.</th><th class="num">Admit Rate</th></tr></thead><tbody>';
+  if (!insRows.length) html += '<tr><td colspan="6" class="empty">No data.</td></tr>';
+  insRows.slice(0,15).forEach(function(r){
+    var rateBadge = r.rate >= 0.5 ? 'b-green' : (r.rate >= 0.25 ? 'b-blue' : 'b-amber');
+    html += '<tr><td>'+esc(r.name)+'</td><td class="num">'+r.total+'</td><td class="num">'+r.admitted+'</td><td class="num">'+r.lost+'</td><td class="num">'+r.aband+'</td><td class="num"><span class="badge '+rateBadge+'">'+(r.rate*100).toFixed(0)+'%</span></td></tr>';
+  });
+  html += '</tbody></table></div></div>';
 
-  html += '<div class="card"><div class="card-h"><div><div class="card-title">Time to Admit Distribution</div><div class="card-sub">Days from opp creation to admission · ' + p + ' · n=' + ttaDays.length + '</div></div></div>';
-  html += '<div class="chart-wrap"><canvas id="ch-tta"></canvas></div>';
-  if (ttaDays.length) {
-    var avg = (ttaDays.reduce(function(s,v){return s+v;},0) / ttaDays.length).toFixed(1);
-    var med = median(ttaDays).toFixed(1);
-    html += '<div style="margin-top:10px;font-size:12px;color:var(--muted)">Average: <strong style="color:var(--navy)">' + avg + ' days</strong> · Median: <strong style="color:var(--navy)">' + med + ' days</strong></div>';
-  }
-  html += '</div>';
+  // ── Methodology footnote (#8) ─────────────────────────────────────────
+  html += methodology(
+    '<div class="methodology-section">Period scoping</div>' +
+    '<p>KPI counts (Created, Admitted, Lost, Abandoned, Active, Scheduled) reflect opportunities <strong>created</strong> in the selected period. An opp created in March that is admitted in May appears in the Created count of March, not May. To see admit volume by admit date, use the Funnel Trend chart on this tab.</p>' +
+    '<div class="methodology-section">Stage funnel — snapshot, not flow</div>' +
+    '<p>The funnel shows where opportunities sit <strong>right now</strong> — not the path they took. An opp currently at "Priority: Standard" appears only in Priority, even though it almost certainly passed through VOB and Pre-Screen earlier. Reads as "current footprint by stage," not "historical movement through stages."</p>' +
+    '<div class="methodology-section">Refer Out — excluded from funnel</div>' +
+    '<p>Stages containing "Refer Out" mean the opportunity left the funnel (referred to another facility). They are excluded from the main funnel and surfaced separately in the side stat. They do not count against conversion rates between bands.</p>' +
+    '<div class="methodology-section">Between-band conversion %</div>' +
+    '<p>Each band\'s "→ next band" percentage is the snapshot ratio (next band ÷ current band). Because stage is current-state, this is NOT a true cohort conversion rate. A 200% reading (next band larger than current) means more opps are CURRENTLY at the later stage than the earlier — which is normal when later stages have accumulated longer.</p>' +
+    '<div class="methodology-section">Time-to-outcome metrics</div>' +
+    '<ul>' +
+      '<li><strong>TTA</strong> — Days from opp creation to admit_date. Admitted/AdmittedLegacy only.</li>' +
+      '<li><strong>TTD-Lost</strong> — Days from opp creation to lost decision date.</li>' +
+      '<li><strong>TTD-Abandoned</strong> — Days from opp creation to abandoned decision date.</li>' +
+      '<li><strong>TSA</strong> — Days from scheduled-event date to admit_date.</li>' +
+    '</ul>' +
+    '<p>When Sunwave\'s lost_date / abandoned_date fields are not populated (currently common), TTD falls back to "last human activity on the opp" as a proxy. Charts using the proxy are labeled <strong>(using last-activity proxy)</strong> in the sub-title. When Sunwave begins exporting these dates reliably, the proxy disappears automatically.</p>' +
+    '<div class="methodology-section">Lost / Abandoned reasons</div>' +
+    '<p>Counts come from the Sunwave-recorded reason field at the time of resolution. New reasons added by the team appear in the matrix automatically — no code change required. Reasons not yet seen in the current period show as zero rows.</p>' +
+    '<div class="methodology-section">Notes &amp; caveats</div>' +
+    '<ul>' +
+      '<li>Test records (Jane Doe, training entries, etc.) are excluded at pipeline build time. List of excluded patterns lives in build_crm.py.</li>' +
+      '<li>' + (META.excluded_test_records || 0) + ' test records currently filtered.</li>' +
+      '<li>"(none)" or unmatched stages are surfaced in the funnel "(unmapped)" call-out for visibility.</li>' +
+    '</ul>'
+  );
 
   document.getElementById('tab-pipeline').innerHTML = html;
 
-  // Charts
-  var stageData = {};
-  oppsP.forEach(function(o){ var s = o.stage || '(none)'; stageData[s] = (stageData[s]||0)+1; });
-  var stageLabels = Object.keys(stageData).sort(function(a,b){return stageData[b]-stageData[a]});
-  var stageVals = stageLabels.map(function(k){ return stageData[k]; });
-  destroyChart('stage');
-  CHARTS.stage = new Chart(document.getElementById('ch-stage'), {
-    type:'bar',
-    data:{ labels:stageLabels, datasets:[{ label:'Opps', data:stageVals, backgroundColor:'#0a3d5c', borderRadius:4 }] },
-    options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y',
-      scales:{ x:{ ticks:{font:{size:10}} }, y:{ ticks:{font:{size:11}} } },
-      plugins:{ legend:{display:false} } }
+  // ── Trend chart ─────────────────────────────────────────────────────
+  var days = periodDateRange();
+  var oppByCo = {};
+  oppsP.forEach(function(o){
+    if (!o.co) return;
+    var d = pd(o.co); if (!d) return;
+    var k = d.toISOString().slice(0,10);
+    if (!oppByCo[k]) oppByCo[k] = { Admitted:0, Lost:0, Abandoned:0 };
+    if (isAdmitted(o)) oppByCo[k].Admitted++;
+    else if (o.outcome === 'Lost') oppByCo[k].Lost++;
+    else if (o.outcome === 'Abandoned') oppByCo[k].Abandoned++;
   });
+  var agg = aggregateDates(days, FILTERS.gran, function(d){
+    var k = d.toISOString().slice(0,10);
+    return oppByCo[k] || { Admitted:0, Lost:0, Abandoned:0 };
+  });
+  renderTrendChart('ch-pl-trend', agg.labels, [
+    { label:'Admitted',  data:agg.values.map(function(v){return v.Admitted||0}),  backgroundColor:'#10b981', borderRadius:3 },
+    { label:'Lost',      data:agg.values.map(function(v){return v.Lost||0}),      backgroundColor:'#f59e0b', borderRadius:3 },
+    { label:'Abandoned', data:agg.values.map(function(v){return v.Abandoned||0}), backgroundColor:'#ef4444', borderRadius:3 }
+  ], 'bar');
 
-  var outLabels = ['Active','Scheduled','Admitted','AdmittedLegacy','Lost','Abandoned'];
-  var outVals = outLabels.map(function(l){ return oppsP.filter(function(o){return o.outcome===l;}).length; });
-  var outColors = ['#3b82f6','#8b5cf6','#10b981','#3dffc0','#f59e0b','#ef4444'];
-  destroyChart('outcome');
-  CHARTS.outcome = new Chart(document.getElementById('ch-outcome'), {
-    type:'doughnut',
-    data:{ labels:outLabels, datasets:[{ data:outVals, backgroundColor:outColors }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:'right',labels:{font:{size:11}}} } }
-  });
+  // ── Time-to-outcome charts ──────────────────────────────────────────
+  renderBucketChart('ch-tta',       ttaData(oppsP),       '#10b981');
+  renderBucketChart('ch-ttd-lost',  ttdLostData(oppsP),   '#f59e0b');
+  renderBucketChart('ch-ttd-aband', ttdAbandData(oppsP),  '#ef4444');
+  renderBucketChart('ch-tsa',       tsaData(oppsP),       '#0a3d5c');
+}
 
-  // TTA histogram
-  var bins = [0,0,0,0,0,0,0]; // 0-1, 2-3, 4-7, 8-14, 15-30, 31-60, 60+
-  ttaDays.forEach(function(d){
-    if (d <= 1) bins[0]++;
-    else if (d <= 3) bins[1]++;
-    else if (d <= 7) bins[2]++;
-    else if (d <= 14) bins[3]++;
-    else if (d <= 30) bins[4]++;
-    else if (d <= 60) bins[5]++;
-    else bins[6]++;
+// ── Outcome matrix (#3) builder ──────────────────────────────────────────
+function renderOutcomeMatrix(oppsP){
+  var days = periodDateRange();
+  var outcomes = ['Active','Scheduled','Admitted','AdmittedLegacy','Lost','Abandoned'];
+  // Build daily counts by outcome (using created_on as the date axis)
+  var byDay = {};
+  oppsP.forEach(function(o){
+    var d = pd(o.co); if (!d) return;
+    var k = d.toISOString().slice(0,10);
+    if (!byDay[k]) byDay[k] = {};
+    byDay[k][o.outcome] = (byDay[k][o.outcome]||0) + 1;
   });
-  destroyChart('tta');
-  CHARTS.tta = new Chart(document.getElementById('ch-tta'), {
-    type:'bar',
-    data:{ labels:['0-1d','2-3d','4-7d','8-14d','15-30d','31-60d','60d+'],
-           datasets:[{ label:'Opps', data:bins, backgroundColor:'#3dffc0', borderColor:'#0a3d5c', borderWidth:1, borderRadius:4 }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} } }
+  var agg = aggregateDates(days, FILTERS.gran, function(d){
+    return byDay[d.toISOString().slice(0,10)] || {};
+  });
+  // Reverse so newest is on the LEFT (after the label column)
+  var labels = agg.labels.slice().reverse();
+  var values = agg.values.slice().reverse();
+
+  var rows = outcomes.map(function(o){
+    var vals = values.map(function(v){ return (v && v[o]) || 0; });
+    var total = vals.reduce(function(s,x){return s+x;}, 0);
+    return { id: 'oc-'+o, label: o, values: vals, total: total };
+  });
+  var totalsValues = values.map(function(v){
+    if (!v) return 0;
+    var s = 0;
+    outcomes.forEach(function(o){ s += (v[o]||0); });
+    return s;
+  });
+  var grandTotal = totalsValues.reduce(function(s,x){return s+x;}, 0);
+
+  var admitRateValues = values.map(function(v, i){
+    var t = totalsValues[i];
+    if (!t) return null;
+    var ad = ((v && v['Admitted'])||0) + ((v && v['AdmittedLegacy'])||0);
+    return ad / t;
+  });
+  var grandAdmits = oppsP.filter(isAdmitted).length;
+  var grandRate = grandTotal ? grandAdmits / grandTotal : null;
+
+  return renderMatrix(rows, labels.map(function(l){ return {key:l, label:l}; }), {
+    firstColLabel: 'Outcome',
+    showPct: true,
+    totalsRow: { label: 'TOTAL', values: totalsValues, total: grandTotal },
+    admitRateRow: { label: 'ADMIT RATE', values: admitRateValues, total: grandRate },
+    matrixId: 'mtx-outcome',
+    emptyLabel: 'No outcomes in period.'
   });
 }
 
-function renderReasonTable(map, total) {
-  var entries = Object.keys(map).map(function(k){return [k,map[k]];}).sort(function(a,b){return b[1]-a[1]});
-  if (!entries.length) return '<div class="empty">No data for this period.</div>';
-  var h = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Reason</th><th class="num">Count</th><th class="num">%</th></tr></thead><tbody>';
-  entries.forEach(function(e){
-    h += '<tr><td>'+esc(e[0])+'</td><td class="num">'+e[1]+'</td><td class="num">'+pct(e[1], total)+'</td></tr>';
+// ── Reason matrix (#4) builder ───────────────────────────────────────────
+function renderReasonMatrix(oppsP, outcomeLabel, reasonField){
+  var days = periodDateRange();
+  var byDay = {};
+  var reasonSet = {};
+  oppsP.forEach(function(o){
+    if (o.outcome !== outcomeLabel) return;
+    var reason = (o[reasonField] || '(unspecified)').trim() || '(unspecified)';
+    reasonSet[reason] = true;
+    var d = pd(o.co); if (!d) return;
+    var k = d.toISOString().slice(0,10);
+    if (!byDay[k]) byDay[k] = {};
+    byDay[k][reason] = (byDay[k][reason]||0) + 1;
   });
-  h += '</tbody></table></div>';
-  return h;
+  var agg = aggregateDates(days, FILTERS.gran, function(d){
+    return byDay[d.toISOString().slice(0,10)] || {};
+  });
+  var labels = agg.labels.slice().reverse();
+  var values = agg.values.slice().reverse();
+  var reasons = Object.keys(reasonSet);
+
+  // Sort reasons by total descending
+  var rowsTotals = reasons.map(function(r){
+    var vals = values.map(function(v){ return (v && v[r]) || 0; });
+    return { reason: r, vals: vals, total: vals.reduce(function(s,x){return s+x;}, 0) };
+  }).sort(function(a,b){ return b.total - a.total; });
+  var rows = rowsTotals.map(function(r){
+    return { id: 'rsn-'+outcomeLabel+'-'+r.reason, label: r.reason, values: r.vals, total: r.total };
+  });
+
+  var totalsValues = values.map(function(v){
+    if (!v) return 0;
+    var s = 0; reasons.forEach(function(r){ s += (v[r]||0); });
+    return s;
+  });
+  var grandTotal = totalsValues.reduce(function(s,x){return s+x;}, 0);
+
+  return renderMatrix(rows, labels.map(function(l){ return {key:l, label:l}; }), {
+    firstColLabel: 'Reason',
+    showPct: true,
+    totalsRow: { label: 'TOTAL', values: totalsValues, total: grandTotal },
+    matrixId: 'mtx-reason-' + outcomeLabel,
+    emptyLabel: 'No ' + outcomeLabel.toLowerCase() + ' opps in period.'
+  });
 }
 
-// ──────────────────────────────────────────────────────────────────
-// USER PRODUCTIVITY
-// ──────────────────────────────────────────────────────────────────
-function buildProductivity() {
+// ── Time-to-outcome data builders (#5) ───────────────────────────────────
+function ttaData(oppsP){
+  var bins = [0,0,0,0,0,0,0]; var arr = [];
+  oppsP.forEach(function(o){
+    if (!isAdmitted(o)) return;
+    var d = daysBetween(o.co, o.admit);
+    if (d == null) return;
+    arr.push(d);
+    bins[bucketDays(d)]++;
+  });
+  return { bins: bins, n: arr.length, avg: avg(arr), med: median(arr) };
+}
+function ttdLostData(oppsP){
+  var bins = [0,0,0,0,0,0,0]; var arr = [];
+  oppsP.forEach(function(o){
+    if (o.outcome !== 'Lost') return;
+    if (!o.outcome_date) return;
+    var d = daysBetween(o.co, o.outcome_date);
+    if (d == null) return;
+    arr.push(d);
+    bins[bucketDays(d)]++;
+  });
+  return { bins: bins, n: arr.length, avg: avg(arr), med: median(arr) };
+}
+function ttdAbandData(oppsP){
+  var bins = [0,0,0,0,0,0,0]; var arr = [];
+  oppsP.forEach(function(o){
+    if (o.outcome !== 'Abandoned') return;
+    if (!o.outcome_date) return;
+    var d = daysBetween(o.co, o.outcome_date);
+    if (d == null) return;
+    arr.push(d);
+    bins[bucketDays(d)]++;
+  });
+  return { bins: bins, n: arr.length, avg: avg(arr), med: median(arr) };
+}
+function tsaData(oppsP){
+  var bins = [0,0,0,0,0,0,0]; var arr = [];
+  oppsP.forEach(function(o){
+    if (!isAdmitted(o)) return;
+    if (!o.scheduled_date || !o.admit) return;
+    var d = daysBetween(o.scheduled_date, o.admit);
+    if (d == null) return;
+    arr.push(d);
+    bins[bucketDays(d)]++;
+  });
+  return { bins: bins, n: arr.length, avg: avg(arr), med: median(arr) };
+}
+function anyProxy(oppsP, outcomeLabel){
+  for (var i = 0; i < oppsP.length; i++){
+    var o = oppsP[i];
+    if (o.outcome === outcomeLabel && o.outcome_proxy) return true;
+  }
+  return false;
+}
+function anyProxyTSA(oppsP){
+  for (var i = 0; i < oppsP.length; i++){
+    if (isAdmitted(oppsP[i]) && oppsP[i].scheduled_proxy) return true;
+  }
+  return false;
+}
+
+function renderTimeBucketCard(code, fullName, data, color, isProxy){
+  var sub = data.n + ' opps' + (isProxy ? ' · using last-activity proxy' : '');
+  var html = '<div class="card" style="margin:0">';
+  html += '<div class="card-h"><div><div class="card-title">' + esc(code) + '</div><div class="card-sub">' + esc(fullName) + ' · ' + sub + '</div></div></div>';
+  html += '<div class="chart-wrap-small"><canvas id="ch-' + code.toLowerCase().replace(/[^a-z]/g,'-') + '"></canvas></div>';
+  if (data.n > 0){
+    html += '<div style="margin-top:6px;font-size:10.5px;color:var(--muted);font-family:\'Space Mono\',monospace">Avg: <strong style="color:var(--navy)">' + data.avg.toFixed(1) + 'd</strong> · Median: <strong style="color:var(--navy)">' + data.med.toFixed(1) + 'd</strong></div>';
+  }
+  html += '</div>';
+  return html;
+}
+function renderBucketChart(canvasId, data, color){
+  destroyChart(canvasId);
+  var el = document.getElementById(canvasId);
+  if (!el) return;
+  CHARTS[canvasId] = new Chart(el, {
+    type:'bar',
+    data:{
+      labels: BUCKET_LABELS,
+      datasets:[{ label:'Opps', data:data.bins, backgroundColor:color, borderColor:color, borderWidth:1, borderRadius:3 }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{ x:{ ticks:{font:{size:9}} }, y:{ beginAtZero:true, ticks:{font:{size:9}} } },
+      plugins:{ legend:{display:false} }
+    }
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// USER PRODUCTIVITY (compact table + Activity Mix matrix #6/#7)
+// ──────────────────────────────────────────────────────────────────────────
+function buildProductivity(){
   var actsP = filteredActs();
-  var p = FILTERS.period;
+  var p = periodLabel();
   var byUser = {};
   actsP.forEach(function(a){
     if (!a.by) return;
@@ -743,7 +1462,7 @@ function buildProductivity() {
       email: (u.types['Email']||0) + (u.types['Sms']||0),
       task: u.types['Task']||0,
       meeting: u.types['Meeting']||0,
-      opps: u.opps.size, days: u.days.size,
+      opps: u.opps.size, days: u.days.size
     };
   });
   rows.sort(function(a,b){ return b.total - a.total; });
@@ -757,16 +1476,20 @@ function buildProductivity() {
   html += kpi('amber', 'Workflow Excluded', FILTERS.humanOnly ? 'YES' : 'NO');
   html += '</div>';
 
+  html += buildTrendCard('Activity Volume Trend', 'Activities by type per ' + granLabel() + ' · ' + p, 'ch-prod-trend');
+
+  // Compact productivity table (#7)
   html += '<div class="card"><div class="card-h"><div><div class="card-title">User Productivity Table</div><div class="card-sub">Click any column header to sort · ' + p + ' · ' + (FILTERS.humanOnly ? 'Human only' : 'All activity') + '</div></div></div>';
   html += '<div class="tbl-wrap"><table class="tbl" id="prod-tbl"><thead><tr>';
-  ['User','Total','Calls','Notes','Email/SMS','Tasks','Meetings','Opps','Days Active','vs. Median'].forEach(function(h,i){
-    html += '<th data-col="'+i+'">'+h+'</th>';
+  ['User','Total','Calls','Notes','Email/SMS','Tasks','Meetings','Opps','Days Active','vs. Median'].forEach(function(hh,i){
+    html += '<th data-col="'+i+'">'+hh+'</th>';
   });
   html += '</tr></thead><tbody>';
   if (!rows.length) html += '<tr><td colspan="10" class="empty">No activity in this period.</td></tr>';
   rows.forEach(function(r){
     var pctOfMax = Math.min(100, Math.round((r.total/maxTotal)*100));
     var bar = '<div class="mbar"><div class="mbar-fill" style="width:'+pctOfMax+'%"></div></div>';
+    var medPct = medTotal>0 ? Math.round(r.total/medTotal*100)+'%' : '—';
     html += '<tr><td>'+esc(r.name)+'</td><td class="num"><strong>'+r.total+'</strong></td>'
       + '<td class="num">'+r.call+'</td>'
       + '<td class="num">'+r.note+'</td>'
@@ -775,45 +1498,174 @@ function buildProductivity() {
       + '<td class="num">'+r.meeting+'</td>'
       + '<td class="num">'+r.opps+'</td>'
       + '<td class="num">'+r.days+'</td>'
-      + '<td class="num">'+bar+(medTotal>0?Math.round(r.total/medTotal*100)+'%':'—')+'</td></tr>';
+      + '<td class="num"><span style="white-space:nowrap">'+bar+medPct+'</span></td></tr>';
   });
   html += '</tbody></table></div></div>';
 
-  // Activity mix chart (top 12)
-  html += '<div class="card"><div class="card-h"><div><div class="card-title">Activity Mix by User (Top 12)</div><div class="card-sub">Stacked by activity type</div></div></div>';
-  html += '<div class="chart-wrap-tall"><canvas id="ch-mix"></canvas></div></div>';
+  // ── Activity Mix Matrix (#6) ─────────────────────────────────────────
+  var displayRows = ACTMIX_SHOWALL ? rows : rows.slice(0, 12);
+  var totalUsers = rows.length;
+  var btnLabel = ACTMIX_SHOWALL ? ('Show top 12') : ('Show all (' + totalUsers + ')');
+  html += '<div class="card">';
+  html += '<div class="card-h"><div><div class="card-title">Activity Mix Trend by User</div><div class="card-sub">Per ' + granLabel() + ' · newest first · click user name to collapse · ' + (ACTMIX_SHOWALL ? totalUsers + ' users shown' : 'top 12 of ' + totalUsers) + '</div></div>';
+  html += '<div class="card-actions">';
+  html += '<button class="card-act-btn" id="actmix-toggleshow">' + esc(btnLabel) + '</button>';
+  html += '<button class="card-act-btn" id="actmix-collapseall">COLLAPSE ALL</button>';
+  html += '<button class="card-act-btn" id="actmix-expandall">EXPAND ALL</button>';
+  html += '</div></div>';
+  html += renderActivityMixMatrix(displayRows);
+  html += '</div>';
 
   document.getElementById('tab-productivity').innerHTML = html;
 
   // Sort handlers
   var tbl = document.getElementById('prod-tbl');
-  tbl.querySelectorAll('th').forEach(function(th, i){
-    th.onclick = function() { sortProdTable(i); };
+  if (tbl){
+    tbl.querySelectorAll('th').forEach(function(th, i){ th.onclick = function(){ sortProdTable(i); }; });
+  }
+
+  // Activity Mix toggle handlers
+  var btnShow = document.getElementById('actmix-toggleshow');
+  if (btnShow) btnShow.onclick = function(){ ACTMIX_SHOWALL = !ACTMIX_SHOWALL; buildProductivity(); };
+  var btnCol = document.getElementById('actmix-collapseall');
+  if (btnCol) btnCol.onclick = function(){
+    displayRows.forEach(function(r){ MTX_COLLAPSED['mtx-actmix|am-'+r.name] = true; });
+    buildProductivity();
+  };
+  var btnExp = document.getElementById('actmix-expandall');
+  if (btnExp) btnExp.onclick = function(){
+    displayRows.forEach(function(r){ MTX_COLLAPSED['mtx-actmix|am-'+r.name] = false; });
+    buildProductivity();
+  };
+
+  // Trend chart
+  var days = periodDateRange();
+  var actsByDay = {};
+  actsP.forEach(function(a){
+    var d = pd(a.date); if (!d) return;
+    var k = d.toISOString().slice(0,10);
+    if (!actsByDay[k]) actsByDay[k] = {};
+    actsByDay[k][a.type] = (actsByDay[k][a.type]||0) + 1;
+  });
+  var typeColors = { Call:'#3b82f6', Note:'#0a3d5c', Email:'#8b5cf6', Sms:'#ec4899', Task:'#3dffc0', Meeting:'#f59e0b', Workflow:'#94a3b8', Wave:'#cbd5e1' };
+  var allTypes = {};
+  Object.values(actsByDay).forEach(function(o){ Object.keys(o).forEach(function(t){ allTypes[t]=true; }); });
+  var typeList = Object.keys(allTypes).sort();
+  var agg = aggregateDates(days, FILTERS.gran, function(d){
+    return actsByDay[d.toISOString().slice(0,10)] || {};
+  });
+  var ds = typeList.map(function(t){
+    return { label:t, data:agg.values.map(function(v){return v[t]||0}), backgroundColor: typeColors[t]||'#6b7280', stack:'a', borderRadius:3 };
+  });
+  renderTrendChart('ch-prod-trend', agg.labels, ds, 'bar');
+}
+
+function renderActivityMixMatrix(displayRows){
+  var days = periodDateRange();
+  var actTypes = ['Call','Note','Email','Sms','Task','Meeting'];
+
+  // Build per-user-per-day-per-type counts
+  var userDayType = {};
+  displayRows.forEach(function(r){ userDayType[r.name] = {}; });
+  ACTS.forEach(function(a){
+    if (!a.by) return;
+    if (FILTERS.humanOnly && !isHuman(a)) return;
+    if (!userMatch(a.by)) return;
+    if (!inPeriod(a.date)) return;
+    if (!userDayType[a.by]) return;
+    var d = pd(a.date); if (!d) return;
+    var k = d.toISOString().slice(0,10);
+    if (!userDayType[a.by][k]) userDayType[a.by][k] = {};
+    userDayType[a.by][k][a.type] = (userDayType[a.by][k][a.type]||0) + 1;
   });
 
-  // Stacked bar chart
-  var top12 = rows.slice(0, 12);
-  destroyChart('mix');
-  CHARTS.mix = new Chart(document.getElementById('ch-mix'), {
-    type:'bar',
-    data: {
-      labels: top12.map(function(r){return r.name}),
-      datasets: [
-        { label:'Calls',     data: top12.map(function(r){return r.call}),    backgroundColor:'#3b82f6' },
-        { label:'Notes',     data: top12.map(function(r){return r.note}),    backgroundColor:'#0a3d5c' },
-        { label:'Email/SMS', data: top12.map(function(r){return r.email}),   backgroundColor:'#8b5cf6' },
-        { label:'Tasks',     data: top12.map(function(r){return r.task}),    backgroundColor:'#3dffc0' },
-        { label:'Meetings',  data: top12.map(function(r){return r.meeting}), backgroundColor:'#f59e0b' },
-      ]
-    },
-    options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y',
-      scales:{ x:{ stacked:true }, y:{ stacked:true, ticks:{font:{size:11}} } },
-      plugins:{ legend:{position:'top',labels:{font:{size:11}}} }
-    }
+  // For each user, aggregate by granularity
+  var matrixRows = displayRows.map(function(r){
+    var perDayTotal = {};
+    var perDayByType = {};
+    actTypes.forEach(function(t){ perDayByType[t] = {}; });
+    var dayMap = userDayType[r.name] || {};
+    days.forEach(function(d){
+      var k = d.toISOString().slice(0,10);
+      var dayData = dayMap[k] || {};
+      var dayTotal = 0;
+      actTypes.forEach(function(t){
+        var v = dayData[t] || 0;
+        if (t === 'Email') v += (dayData['Email'] || 0); // already there; combine Email+Sms below
+        perDayByType[t][k] = v;
+        dayTotal += v;
+      });
+      perDayTotal[k] = dayTotal;
+    });
+
+    // Aggregate per granularity for the user total
+    var aggTotal = aggregateDates(days, FILTERS.gran, function(d){
+      return perDayTotal[d.toISOString().slice(0,10)] || 0;
+    });
+    var totalLabels = aggTotal.labels.slice().reverse();
+    var totalValues = aggTotal.values.slice().reverse();
+    var grandTotal = totalValues.reduce(function(s,x){return s+(x||0);}, 0);
+
+    // Sub-rows per activity type — show Email+Sms combined as Email/SMS
+    var combinedTypes = [
+      { label:'Calls', src: ['Call'] },
+      { label:'Notes', src: ['Note'] },
+      { label:'Email/SMS', src: ['Email','Sms'] },
+      { label:'Tasks', src: ['Task'] },
+      { label:'Meetings', src: ['Meeting'] }
+    ];
+    var sub = combinedTypes.map(function(ct){
+      var aggT = aggregateDates(days, FILTERS.gran, function(d){
+        var k = d.toISOString().slice(0,10);
+        var sum = 0;
+        ct.src.forEach(function(s){ sum += (perDayByType[s] && perDayByType[s][k]) || 0; });
+        return sum;
+      });
+      var labels2 = aggT.labels.slice().reverse();
+      var values2 = aggT.values.slice().reverse();
+      return { id: 'am-'+r.name+'-'+ct.label, label: ct.label, values: values2, total: values2.reduce(function(s,x){return s+(x||0);}, 0) };
+    });
+
+    var rowId = 'am-' + r.name;
+    return {
+      id: rowId, label: r.name,
+      values: totalValues, total: grandTotal,
+      expandable: true,
+      collapsed: isMatrixRowCollapsed('mtx-actmix', rowId),
+      sub: sub
+    };
+  });
+
+  // Period totals (sum across all displayed users)
+  var firstUser = matrixRows[0];
+  if (!firstUser){
+    return '<div class="empty">No users to show.</div>';
+  }
+  var nCols = firstUser.values.length;
+  var labelsArr = (function(){
+    // Re-derive labels (same as agg above for any user)
+    var aggTmp = aggregateDates(days, FILTERS.gran, function(d){ return 0; });
+    return aggTmp.labels.slice().reverse();
+  })();
+
+  var totalsValues = [];
+  for (var i = 0; i < nCols; i++){
+    var s = 0;
+    matrixRows.forEach(function(r){ s += (r.values[i]||0); });
+    totalsValues.push(s);
+  }
+  var grandTotal = totalsValues.reduce(function(s,x){return s+x;}, 0);
+
+  return renderMatrix(matrixRows, labelsArr.map(function(l){ return {key:l, label:l}; }), {
+    firstColLabel: 'User',
+    showPct: false,
+    totalsRow: { label: 'TOTAL', values: totalsValues, total: grandTotal },
+    matrixId: 'mtx-actmix',
+    emptyLabel: 'No users to show.'
   });
 }
 
-function sortProdTable(colIdx) {
+function sortProdTable(colIdx){
   var tbl = document.getElementById('prod-tbl');
   var tbody = tbl.querySelector('tbody');
   var rows = Array.from(tbody.querySelectorAll('tr')).filter(function(r){return r.children.length>1;});
@@ -832,332 +1684,1013 @@ function sortProdTable(colIdx) {
   rows.forEach(function(r){ tbody.appendChild(r); });
 }
 
-// ──────────────────────────────────────────────────────────────────
-// USER EFFECTIVENESS
-// ──────────────────────────────────────────────────────────────────
-function buildEffectiveness() {
-  var actsP = filteredActs();
-  var p = FILTERS.period;
-
-  // For each user: opps touched (period), admits credited, response time
-  var byUser = {};
-  actsP.forEach(function(a){
-    if (!a.by) return;
-    if (!byUser[a.by]) byUser[a.by] = { opps:new Set(), responses:[] };
-    if (a.oid) byUser[a.by].opps.add(a.oid);
+// ──────────────────────────────────────────────────────────────────────────
+// USER EFFECTIVENESS — outcome-weighted scoring + methodology footnote (#8)
+// ──────────────────────────────────────────────────────────────────────────
+function buildEffectiveness(){
+  var p = periodLabel();
+  var oppsP = periodOpps();
+  var actsAll = ACTS.filter(function(a){
+    if (FILTERS.humanOnly && !isHuman(a)) return false;
+    return userMatch(a.by);
   });
 
-  // Response time = time from opp creation → first activity by THIS user
-  var oppById = {};
-  OPPS.forEach(function(o){ oppById[o.id] = o; });
-
-  // Group acts by oid+user, find earliest
-  var firstActByUserOpp = {};
-  actsP.forEach(function(a){
-    if (!a.by || !a.oid) return;
-    var key = a.by + '|' + a.oid;
-    var d = pd(a.date); if (!d) return;
-    if (!firstActByUserOpp[key] || d < firstActByUserOpp[key]) firstActByUserOpp[key] = d;
-  });
-  Object.keys(firstActByUserOpp).forEach(function(key){
-    var parts = key.split('|'); var name = parts[0], oid = parts[1];
-    var opp = oppById[oid]; if (!opp) return;
-    var co = pd(opp.co); if (!co) return;
-    var firstAct = firstActByUserOpp[key];
-    var hrs = (firstAct - co) / 3600000;
-    if (hrs < 0) return;
-    if (!byUser[name]) byUser[name] = { opps:new Set(), responses:[] };
-    byUser[name].responses.push(hrs);
+  // Opps touched per user in period
+  var touched = {};
+  oppsP.forEach(function(o){
+    var oacts = actsAll.filter(function(a){ return a.oid === o.id && inPeriod(a.date); });
+    var users = {};
+    oacts.forEach(function(a){ if (a.by) users[a.by] = true; });
+    Object.keys(users).forEach(function(u){
+      if (!touched[u]) touched[u] = { opps:new Set(), admits:new Set(), respDays:[] };
+      touched[u].opps.add(o.id);
+      if (isAdmitted(o)) touched[u].admits.add(o.id);
+    });
   });
 
-  // Multi-touch admit credit (period)
-  var admittedOids = new Set(filteredOpps().filter(isAdmitted).filter(function(o){ return inPeriod(o.admit) || inPeriod(o.co); }).map(function(o){return o.id}));
-  var adminCred = {};
-  ACTS.forEach(function(a){
-    if (FILTERS.humanOnly && !isHuman(a)) return;
-    if (!a.by || !a.oid) return;
-    if (!admittedOids.has(a.oid)) return;
-    if (!adminCred[a.by]) adminCred[a.by] = new Set();
-    adminCred[a.by].add(a.oid);
+  // First-response time: created_on → first human activity by ANY user (per user only counts opps they touched)
+  oppsP.forEach(function(o){
+    var co = pd(o.co); if (!co) return;
+    var first = null;
+    actsAll.forEach(function(a){
+      if (a.oid !== o.id) return;
+      var d = pd(a.date); if (!d) return;
+      if (!first || d < first.date) first = { date:d, by:a.by };
+    });
+    if (first && first.by){
+      var hrs = (first.date - co) / 3600000;
+      if (hrs > 0 && touched[first.by]){
+        if (touched[first.by].opps.has(o.id)){
+          touched[first.by].respDays.push(hrs);
+        }
+      }
+    }
   });
 
-  var rows = Object.keys(byUser).map(function(name){
-    var u = byUser[name];
-    var oppsTouched = u.opps.size;
-    var admits = adminCred[name] ? adminCred[name].size : 0;
-    var avgResponse = u.responses.length ? u.responses.reduce(function(s,v){return s+v},0) / u.responses.length : null;
+  var rows = Object.keys(touched).map(function(k){
+    var t = touched[k];
+    var nOpps = t.opps.size;
+    var nAdmits = t.admits.size;
+    var rate = nOpps ? nAdmits / nOpps : 0;
     return {
-      name: name, opps: oppsTouched, admits: admits,
-      rate: oppsTouched > 0 ? admits / oppsTouched : 0,
-      avgResponse: avgResponse, n: u.responses.length,
+      name: k,
+      opps: nOpps,
+      admits: nAdmits,
+      rate: rate,
+      respMed: t.respDays.length ? median(t.respDays) : null
     };
-  }).filter(function(r){ return r.opps >= 1; });
-  rows.sort(function(a,b){ return b.rate - a.rate; });
+  });
+  rows.sort(function(a,b){ return b.admits - a.admits || b.rate - a.rate; });
 
-  var medRate = median(rows.map(function(r){return r.rate}));
-  var allResponses = []; rows.forEach(function(r){ if (r.avgResponse !== null) allResponses.push(r.avgResponse); });
-  var medResp = median(allResponses);
+  var allRates = rows.filter(function(r){ return r.opps >= 5; }).map(function(r){ return r.rate; });
+  var benchRate = allRates.length ? median(allRates) : 0;
+  var allResp = rows.filter(function(r){ return r.respMed != null; }).map(function(r){ return r.respMed; });
+  var benchResp = allResp.length ? median(allResp) : 0;
 
   var html = '<div class="kpis">';
-  html += kpi('navy',  'Users w/ Activity', rows.length);
-  html += kpi('green', 'Median Admit Rate', (medRate*100).toFixed(1) + '%');
-  html += kpi('blue',  'Median 1st-Response', medResp ? medResp.toFixed(1) + ' hrs' : '—');
-  html += kpi('amber', 'Total Admits Credited', Object.values(adminCred).reduce(function(s,v){return s+v.size;},0));
+  html += kpi('navy',  'Active Users (' + p + ')', rows.length);
+  html += kpi('green', 'Median Admit Rate', (benchRate*100).toFixed(0) + '%', '(users with 5+ opps)');
+  html += kpi('blue',  'Median First Response', benchResp.toFixed(1) + 'h');
+  html += kpi('teal',  'Total Admits', rows.reduce(function(s,r){return s+r.admits;}, 0));
   html += '</div>';
 
-  html += '<div class="card"><div class="card-h"><div><div class="card-title">User Effectiveness</div><div class="card-sub">Admit rate (multi-touch) and response time vs. peer median · ' + p + '</div></div></div>';
-  html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>User</th><th class="num">Opps Touched</th><th class="num">Admits Credited</th><th class="num">Admit Rate</th><th class="num">Median Resp (hrs)</th><th class="num">vs. Peer Median</th></tr></thead><tbody>';
-  if (!rows.length) html += '<tr><td colspan="6" class="empty">No data for this period.</td></tr>';
+  // v2 trend chart
+  html += buildTrendCard('Effectiveness Trend', 'Admits credited per user per ' + granLabel() + ' · ' + p + ' · top 5 users', 'ch-eff-trend');
+
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">User Effectiveness Scorecard</div><div class="card-sub">Sorted by Admits Credited · ' + p + '</div></div></div>';
+  html += '<div class="tbl-wrap"><table class="tbl" id="eff-tbl"><thead><tr>';
+  ['User','Opps Touched','Admits Credited','Admit Rate','Median Resp (h)','vs. Peer Median'].forEach(function(hh,i){
+    html += '<th data-col="'+i+'">'+hh+'</th>';
+  });
+  html += '</tr></thead><tbody>';
+  if (!rows.length) html += '<tr><td colspan="6" class="empty">No effectiveness data in period.</td></tr>';
   rows.forEach(function(r){
-    var ratePct = (r.rate*100).toFixed(1) + '%';
-    var rateBadge = r.rate >= medRate * 1.2 ? 'b-green' : (r.rate >= medRate * 0.8 ? 'b-blue' : 'b-amber');
-    var respDisplay = r.avgResponse !== null ? r.avgResponse.toFixed(1) : '—';
-    var perf = '—';
-    if (r.avgResponse !== null && medResp > 0) {
-      var diff = (medResp - r.avgResponse) / medResp;
-      var perfCls = diff > 0 ? 'b-green' : 'b-amber';
-      perf = '<span class="badge ' + perfCls + '">' + (diff > 0 ? 'faster ' : 'slower ') + Math.abs(diff*100).toFixed(0) + '%</span>';
+    var rateBadge = r.rate >= 0.5 ? 'b-green' : (r.rate >= 0.25 ? 'b-blue' : (r.rate >= 0.10 ? 'b-amber' : 'b-red'));
+    var respBadge = r.respMed == null ? 'b-muted' : (r.respMed <= 4 ? 'b-green' : (r.respMed <= 12 ? 'b-blue' : (r.respMed <= 24 ? 'b-amber' : 'b-red')));
+    var respTxt = r.respMed == null ? '—' : r.respMed.toFixed(1);
+    var vsPeer = '—';
+    if (r.opps >= 5){
+      var diff = r.rate - benchRate;
+      var sign = diff >= 0 ? '+' : '';
+      vsPeer = '<span class="badge ' + (diff >= 0 ? 'b-green' : 'b-red') + '">' + sign + (diff*100).toFixed(0) + 'pp</span>';
     }
-    html += '<tr><td>'+esc(r.name)+'</td><td class="num">'+r.opps+'</td><td class="num">'+r.admits+'</td>'
-      + '<td class="num"><span class="badge '+rateBadge+'">'+ratePct+'</span></td>'
-      + '<td class="num">'+respDisplay+'</td>'
-      + '<td class="num">'+perf+'</td></tr>';
+    html += '<tr><td>'+esc(r.name)+'</td><td class="num">'+r.opps+'</td><td class="num"><strong>'+r.admits+'</strong></td>'
+      + '<td class="num"><span class="badge '+rateBadge+'">'+(r.rate*100).toFixed(0)+'%</span></td>'
+      + '<td class="num"><span class="badge '+respBadge+'">'+respTxt+'</span></td>'
+      + '<td class="num">'+vsPeer+'</td></tr>';
+  });
+  html += '</tbody></table></div>';
+
+  // Methodology footnote (always visible — change #8)
+  html += methodology(
+    '<div class="methodology-section">Definitions</div>' +
+    '<ul>' +
+      '<li><strong>Opps Touched</strong> — Distinct opportunities where the user logged at least one human activity (Call, Note, Email, SMS, Task, or Meeting) within the selected period. Workflow and Wave events are excluded when "Human Only" is on.</li>' +
+      '<li><strong>Admits Credited</strong> — Of the user\'s touched opps, how many ultimately ended in Admitted or AdmittedLegacy outcome. <em>Multi-touch credit</em>: an admit may be credited to several users if multiple users touched the same opp.</li>' +
+      '<li><strong>Admit Rate</strong> — Admits Credited ÷ Opps Touched.</li>' +
+      '<li><strong>Median Resp</strong> — Hours from opp creation to the first human activity (any user) on opps the user touched. The 50th percentile of those response times.</li>' +
+      '<li><strong>vs. Peer Median</strong> — User\'s admit rate minus the median admit rate among users with 5+ touched opps. Shown in percentage points (pp).</li>' +
+    '</ul>' +
+    '<div class="methodology-section">Notes &amp; caveats</div>' +
+    '<ul>' +
+      '<li><strong>Multi-touch credit means totals don\'t add up.</strong> If three users all touched an opp that admitted, all three get +1 admit credit. Sum across the table will exceed actual admit count.</li>' +
+      '<li><strong>Period scoping is touch-based.</strong> An opp counts for a user if they touched it during the selected period — even if it was created earlier. Outcome (admitted) can have happened at any time.</li>' +
+      '<li><strong>vs. Peer Median requires 5+ opps</strong> to filter out users with too little volume to compare meaningfully.</li>' +
+      '<li><strong>First Response is opp-level, not user-level.</strong> If a different user responded first to an opp the rated user later picked up, that earlier first response time is what gets recorded for the rated user too.</li>' +
+    '</ul>' +
+    '<div class="methodology-section">Good for</div>' +
+    '<ul>' +
+      '<li>Identifying high-conversion users to learn from / promote</li>' +
+      '<li>Spotting users who pick up many opps but admit few — coaching opportunity</li>' +
+      '<li>Comparing response speed against the team median</li>' +
+    '</ul>' +
+    '<div class="methodology-section">Not good for</div>' +
+    '<ul>' +
+      '<li>Determining who "owns" an admission — multi-touch credit blurs ownership. For owner attribution, look at the Closer field on the Overview tab.</li>' +
+      '<li>Comparing across very different role types (e.g., admissions counselors vs. utilization review staff) — their touch patterns differ structurally.</li>' +
+    '</ul>'
+  );
+
+  html += '</div>';
+
+  document.getElementById('tab-effectiveness').innerHTML = html;
+
+  // Sort handlers
+  var tbl = document.getElementById('eff-tbl');
+  if (tbl){
+    tbl.querySelectorAll('th').forEach(function(th, i){ th.onclick = function(){ sortEffTable(i); }; });
+  }
+
+  // Trend chart — top 5 users by admits, admits credited per granularity bucket
+  var top5 = rows.slice(0, 5);
+  var days = periodDateRange();
+  var palette = ['#0a3d5c','#10b981','#3b82f6','#f59e0b','#8b5cf6'];
+  var datasets = top5.map(function(r, idx){
+    var byDay = {};
+    oppsP.forEach(function(o){
+      if (!isAdmitted(o)) return;
+      var ad = pd(o.admit) || pd(o.co); if (!ad) return;
+      var oacts = actsAll.filter(function(a){ return a.oid === o.id && a.by === r.name; });
+      if (!oacts.length) return;
+      var k = ad.toISOString().slice(0,10);
+      byDay[k] = (byDay[k]||0) + 1;
+    });
+    var agg = aggregateDates(days, FILTERS.gran, function(d){ return byDay[d.toISOString().slice(0,10)] || 0; });
+    return { label: r.name, data: agg.values, borderColor: palette[idx], backgroundColor: palette[idx]+'33', tension:0.25, fill:false };
+  });
+  var aggLabels = aggregateDates(days, FILTERS.gran, function(){return 0;}).labels;
+  renderTrendChart('ch-eff-trend', aggLabels, datasets, 'line');
+}
+
+function sortEffTable(colIdx){
+  var tbl = document.getElementById('eff-tbl');
+  var tbody = tbl.querySelector('tbody');
+  var rows = Array.from(tbody.querySelectorAll('tr')).filter(function(r){return r.children.length>1;});
+  var headers = tbl.querySelectorAll('th');
+  headers.forEach(function(h){ h.classList.remove('sort-asc','sort-desc'); });
+  var asc = SORT_STATE['eff'+colIdx] !== 'asc';
+  SORT_STATE['eff'+colIdx] = asc ? 'asc' : 'desc';
+  headers[colIdx].classList.add(asc ? 'sort-asc' : 'sort-desc');
+  rows.sort(function(a, b){
+    var av = a.children[colIdx].textContent.trim();
+    var bv = b.children[colIdx].textContent.trim();
+    var an = parseFloat(av.replace(/[%,pp]/g,'')); var bn = parseFloat(bv.replace(/[%,pp]/g,''));
+    if (!isNaN(an) && !isNaN(bn)) return asc ? an - bn : bn - an;
+    return asc ? av.localeCompare(bv) : bv.localeCompare(av);
+  });
+  rows.forEach(function(r){ tbody.appendChild(r); });
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// OPPORTUNITY FLOW (with rep column)
+// ──────────────────────────────────────────────────────────────────────────
+function buildFlow(){
+  var oppsAll = filteredOpps().slice().sort(function(a,b){
+    return (pd(b.co)||new Date(0)) - (pd(a.co)||new Date(0));
+  });
+  var p = periodLabel();
+
+  var html = '<div class="kpis">';
+  html += kpi('navy', 'Total Opportunities', oppsAll.length);
+  html += kpi('blue', 'In Period (' + p + ')', oppsAll.filter(function(o){ return inPeriod(o.co); }).length);
+  html += kpi('teal', 'With Activity', oppsAll.filter(function(o){ return ACTS_BY_OID[o.id] && ACTS_BY_OID[o.id].length; }).length);
+  html += '</div>';
+
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Opportunity Flow Explorer</div><div class="card-sub">Click any row to see the full event timeline · search across patient name, stage, outcome, rep</div></div></div>';
+  html += '<div class="tbl-filters"><input type="text" class="tbl-search" id="flow-search" placeholder="Search patient name, stage, outcome, or rep..."></div>';
+  html += '<div class="tbl-wrap"><table class="tbl" id="flow-tbl"><thead><tr>';
+  ['#ID','Patient','Created','Outcome','Stage','Rep','LOC','Events'].forEach(function(hh,i){
+    html += '<th data-col="'+i+'">'+hh+'</th>';
+  });
+  html += '</tr></thead><tbody id="flow-body"></tbody></table></div></div>';
+
+  document.getElementById('tab-flow').innerHTML = html;
+  renderFlowRows(oppsAll);
+
+  document.getElementById('flow-search').oninput = function(e){
+    var q = e.target.value.toLowerCase();
+    var filtered = oppsAll.filter(function(o){
+      return (o.name||'').toLowerCase().indexOf(q) >= 0
+          || (o.stage||'').toLowerCase().indexOf(q) >= 0
+          || (o.outcome||'').toLowerCase().indexOf(q) >= 0
+          || (o.rep||'').toLowerCase().indexOf(q) >= 0;
+    });
+    renderFlowRows(filtered);
+  };
+
+  var tbl = document.getElementById('flow-tbl');
+  tbl.querySelectorAll('th').forEach(function(th, i){ th.onclick = function(){ sortFlowTable(i, oppsAll); }; });
+}
+
+function renderFlowRows(opps){
+  var tbody = document.getElementById('flow-body');
+  if (!opps.length){ tbody.innerHTML = '<tr><td colspan="8" class="empty">No opportunities match.</td></tr>'; return; }
+  var html = '';
+  opps.slice(0, 200).forEach(function(o){
+    var events = ACTS_BY_OID[o.id] || [];
+    var outcomeBadge = isAdmitted(o) ? 'b-green' : (isLost(o) ? 'b-red' : 'b-blue');
+    html += '<tr style="cursor:pointer" onclick="toggleFlowDetail(\''+esc(o.id)+'\')"><td>'+esc(o.id)+'</td><td>'+esc(o.name)+'</td>'
+      + '<td><span style="font-size:10.5px;color:var(--muted);font-family:\'Space Mono\',monospace">'+(o.co?fmt(pd(o.co)):'—')+'</span></td>'
+      + '<td><span class="badge '+outcomeBadge+'">'+esc(o.outcome||'—')+'</span></td>'
+      + '<td style="font-size:11px">'+esc(o.stage||'—')+'</td>'
+      + '<td style="color:var(--muted);font-size:11px">'+esc(o.rep||'—')+'</td>'
+      + '<td style="font-size:11px">'+esc(o.loc||'—')+'</td>'
+      + '<td class="num">'+events.length+'</td></tr>';
+    html += '<tr id="detail-'+esc(o.id)+'" style="display:'+(FLOW_EXPANDED[o.id]?'table-row':'none')+'"><td colspan="8" style="padding:0">'
+      + renderFlowDetail(o, events) + '</td></tr>';
+  });
+  if (opps.length > 200) html += '<tr><td colspan="8" class="empty">Showing first 200 of '+opps.length+' · refine search to narrow.</td></tr>';
+  tbody.innerHTML = html;
+}
+
+function renderFlowDetail(o, events){
+  var html = '<div class="tl-detail">';
+  html += '<div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-family:\'Space Mono\',monospace">'
+    + 'Created: '+(o.co?fmt(pd(o.co)):'—')+' · Outcome: '+esc(o.outcome||'—')
+    + (o.admit?' · Admit: '+fmt(pd(o.admit)):'')
+    + ' · Insurance: '+esc(o.ins||'—')
+    + ' · Referral: '+esc(o.ref||'—')+'</div>';
+  if (!events.length){ html += '<div style="color:var(--muted);font-style:italic;font-size:11.5px">No events recorded.</div></div>'; return html; }
+  events.forEach(function(a){
+    if (FILTERS.humanOnly && !isHuman(a)) return;
+    var d = pd(a.date);
+    html += '<div class="tl-event">';
+    html += '<span class="tl-date">'+(d?fmtDT(d):'')+'</span>';
+    html += '<span class="tl-type">'+esc(a.type)+'</span>';
+    if (a.by) html += '<span class="tl-by">'+esc(a.by)+'</span> ';
+    if (a.subj) html += '<strong>'+esc(a.subj)+'</strong> · ';
+    if (a.text) html += esc(a.text.length>180?a.text.slice(0,180)+'…':a.text);
+    if (a.wf) html += ' <span style="color:var(--muted);font-size:10.5px;font-family:Space Mono,monospace">['+esc(a.wf)+']</span>';
+    html += '</div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+function toggleFlowDetail(oid){
+  FLOW_EXPANDED[oid] = !FLOW_EXPANDED[oid];
+  var el = document.getElementById('detail-'+oid);
+  if (el) el.style.display = FLOW_EXPANDED[oid] ? 'table-row' : 'none';
+}
+
+function sortFlowTable(colIdx, opps){
+  var keys = ['id','name','co','outcome','stage','rep','loc','events'];
+  var key = keys[colIdx];
+  var asc = SORT_STATE['flow'+colIdx] !== 'asc';
+  SORT_STATE['flow'+colIdx] = asc ? 'asc' : 'desc';
+  var sorted = opps.slice().sort(function(a, b){
+    var av, bv;
+    if (key === 'co'){ av = pd(a.co)||new Date(0); bv = pd(b.co)||new Date(0); return asc ? av-bv : bv-av; }
+    if (key === 'events'){ av = (ACTS_BY_OID[a.id]||[]).length; bv = (ACTS_BY_OID[b.id]||[]).length; return asc?av-bv:bv-av; }
+    av = (a[key]||'').toString().toLowerCase(); bv = (b[key]||'').toString().toLowerCase();
+    return asc ? av.localeCompare(bv) : bv.localeCompare(av);
+  });
+  renderFlowRows(sorted);
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// CRM TASKS
+// ──────────────────────────────────────────────────────────────────────────
+function buildTasks(){
+  var p = periodLabel();
+  var now = new Date(); now.setHours(0,0,0,0);
+
+  var tasksFiltered = TASKS.filter(function(t){
+    if (FILTERS.users.length){
+      if (FILTERS.users.indexOf(t.assigned) < 0 && FILTERS.users.indexOf(t.created_by) < 0) return false;
+    }
+    return true;
+  });
+  var tasksInPeriod = tasksFiltered.filter(function(t){ return inPeriod(t.created); });
+  var openTasks = tasksFiltered.filter(function(t){ return t.is_open; });
+  var overdueTasks = openTasks.filter(function(t){ var d = pd(t.due); return d && d < now; });
+  var closedInPeriod = tasksFiltered.filter(function(t){ return !t.is_open && inPeriod(t.due); });
+
+  var html = '<div class="kpis">';
+  html += kpi('navy', 'Total Tasks', tasksFiltered.length);
+  html += kpi('blue', 'Open', openTasks.length, pct(openTasks.length, tasksFiltered.length) + ' of total');
+  html += kpi('red',  'Overdue', overdueTasks.length, pct(overdueTasks.length, openTasks.length) + ' of open');
+  html += kpi('green','Closed (' + p + ')', closedInPeriod.length);
+  html += kpi('amber','Created (' + p + ')', tasksInPeriod.length);
+  html += '</div>';
+
+  html += buildTrendCard('Task Activity Trend', 'Created vs Closed per ' + granLabel() + ' · ' + p, 'ch-tasks-trend');
+
+  // By assigned user
+  var byUser = {};
+  tasksFiltered.forEach(function(t){
+    var u = t.assigned || 'Unassigned';
+    if (!byUser[u]) byUser[u] = { open:0, closed:0, overdue:0, total:0 };
+    byUser[u].total++;
+    if (t.is_open){
+      byUser[u].open++;
+      var d = pd(t.due);
+      if (d && d < now) byUser[u].overdue++;
+    } else byUser[u].closed++;
+  });
+  var userRows = Object.keys(byUser).map(function(k){ return Object.assign({name:k}, byUser[k]); });
+  userRows.sort(function(a,b){ return b.open - a.open; });
+
+  html += '<div class="g2">';
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Open Tasks by Assignee</div><div class="card-sub">All-time · sorted by open count</div></div></div>';
+  html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Assignee</th><th class="num">Open</th><th class="num">Overdue</th><th class="num">Closed</th><th class="num">Total</th></tr></thead><tbody>';
+  if (!userRows.length) html += '<tr><td colspan="5" class="empty">No tasks.</td></tr>';
+  userRows.slice(0,15).forEach(function(r){
+    var openBadge = r.open === 0 ? 'b-muted' : (r.overdue > 0 ? 'b-red' : 'b-blue');
+    html += '<tr><td>'+esc(r.name)+'</td><td class="num"><span class="badge '+openBadge+'">'+r.open+'</span></td>'
+      + '<td class="num">'+(r.overdue>0?'<span class="badge b-red">'+r.overdue+'</span>':'0')+'</td>'
+      + '<td class="num" style="color:var(--muted)">'+r.closed+'</td>'
+      + '<td class="num">'+r.total+'</td></tr>';
   });
   html += '</tbody></table></div></div>';
 
-  document.getElementById('tab-effectiveness').innerHTML = html;
-}
-
-// ──────────────────────────────────────────────────────────────────
-// OPPORTUNITY FLOW — searchable list, click to expand timeline
-// ──────────────────────────────────────────────────────────────────
-var FLOW_EXPANDED = {};   // oid → true if expanded
-// Pre-index timeline by opportunity_id for O(1) lookup
-var ACTS_BY_OID = (function(){
-  var m = {};
-  for (var i = 0; i < ACTS.length; i++) {
-    var oid = ACTS[i].oid;
-    if (!oid) continue;
-    if (!m[oid]) m[oid] = [];
-    m[oid].push(ACTS[i]);
-  }
-  // Sort each opp's events oldest→newest (chronological)
-  Object.keys(m).forEach(function(k){
-    m[k].sort(function(a,b){ return (pd(a.date)||new Date(0)) - (pd(b.date)||new Date(0)); });
+  // By task type
+  var byType = {};
+  tasksFiltered.forEach(function(t){
+    var ty = t.task_type || '(none)';
+    if (!byType[ty]) byType[ty] = { total:0, open:0 };
+    byType[ty].total++;
+    if (t.is_open) byType[ty].open++;
   });
-  return m;
-})();
-
-function buildFlow() {
-  var oppsAll = filteredOpps();
-  var p = FILTERS.period;
-
-  var html = '<div class="card"><div class="card-h"><div><div class="card-title">Opportunity Flow</div><div class="card-sub">Click any row to expand the full timeline · ' + oppsAll.length + ' opportunities · ' + ACTS.length + ' total timeline events</div></div></div>';
-  html += '<div class="tbl-filters"><input type="text" class="tbl-search" id="flow-search" placeholder="Search by patient name, ID, stage, outcome..." oninput="renderFlowList()"></div>';
-  html += '<div id="flow-list-wrap"></div></div>';
-  document.getElementById('tab-flow').innerHTML = html;
-  renderFlowList();
-}
-
-function renderFlowList() {
-  var q = ((document.getElementById('flow-search') || {}).value || '').toLowerCase();
-  var list = filteredOpps().filter(function(o){
-    if (!q) return true;
-    return ((o.name||'') + ' ' + (o.id||'') + ' ' + (o.stage||'') + ' ' + (o.outcome||'') + ' ' + (o.ins||'')).toLowerCase().indexOf(q) >= 0;
+  var typeRows = Object.keys(byType).map(function(k){ return { name:k, total:byType[k].total, open:byType[k].open }; });
+  typeRows.sort(function(a,b){ return b.total - a.total; });
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Tasks by Type</div><div class="card-sub">All-time · open-rate visible</div></div></div>';
+  html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Task Type</th><th class="num">Total</th><th class="num">Open</th><th class="num">Open Rate</th></tr></thead><tbody>';
+  if (!typeRows.length) html += '<tr><td colspan="4" class="empty">No tasks.</td></tr>';
+  typeRows.forEach(function(r){
+    var rate = r.total ? r.open/r.total : 0;
+    var rateBadge = rate >= 0.5 ? 'b-amber' : 'b-blue';
+    html += '<tr><td>'+esc(r.name)+'</td><td class="num">'+r.total+'</td><td class="num">'+r.open+'</td><td class="num"><span class="badge '+rateBadge+'">'+(rate*100).toFixed(0)+'%</span></td></tr>';
   });
-  // Sort by created desc
-  list.sort(function(a,b){ return (pd(b.co)||new Date(0)) - (pd(a.co)||new Date(0)); });
+  html += '</tbody></table></div></div>';
 
-  var html = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th style="width:36px"></th><th>Patient</th><th>ID</th><th>Created</th><th>Outcome</th><th>Stage</th><th>LOC</th><th>Insurance</th><th class="num">Events</th></tr></thead><tbody>';
-  if (!list.length) html += '<tr><td colspan="9" class="empty">No opportunities match.</td></tr>';
-  list.slice(0, 200).forEach(function(o, i){
-    var oc = o.outcome || '';
-    var ocCls = isAdmitted(o) ? 'b-green' : (isLost(o) ? 'b-red' : 'b-blue');
-    var events = ACTS_BY_OID[o.id] || [];
-    var open = !!FLOW_EXPANDED[o.id];
-    var arrow = open ? '&#9660;' : '&#9658;';   // ▼ when open, ▶ when closed
-    var rowOnClick = 'toggleFlow(' + i + ',' + JSON.stringify(o.id) + ')';
-    html += '<tr style="cursor:pointer" onclick=\'' + rowOnClick + '\'>'
-         +    '<td style="text-align:center;color:var(--navy);font-weight:700">' + arrow + '</td>'
-         +    '<td>' + esc(o.name) + '</td>'
-         +    '<td><code>' + esc(o.id) + '</code></td>'
-         +    '<td>' + (o.co ? fmt(pd(o.co)) : '—') + '</td>'
-         +    '<td><span class="badge ' + ocCls + '">' + esc(oc) + '</span></td>'
-         +    '<td>' + esc(o.stage) + '</td>'
-         +    '<td>' + esc(o.loc) + '</td>'
-         +    '<td>' + esc(o.ins) + '</td>'
-         +    '<td class="num">' + (events.length ? '<span class="badge b-teal">' + events.length + '</span>' : '<span style="color:var(--muted)">0</span>') + '</td>'
-         + '</tr>';
-    if (open) {
-      html += '<tr class="tl-row"><td colspan="9" style="padding:0;background:#f8fafc">' + renderFlowTimeline(o.id) + '</td></tr>';
+  // Open task list
+  var sortedOpen = openTasks.slice().sort(function(a,b){ return (pd(a.due)||new Date(8e15)) - (pd(b.due)||new Date(8e15)); });
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Open Task List ('+sortedOpen.length+')</div><div class="card-sub">Sorted by due date · click column header to re-sort</div></div></div>';
+  html += '<div class="tbl-filters"><input type="text" class="tbl-search" id="tasks-search" placeholder="Search subject, assignee, or text..."></div>';
+  html += '<div class="tbl-wrap"><table class="tbl" id="tasks-tbl"><thead><tr>';
+  ['Subject','Type','Assigned','Created By','Created','Due','Status'].forEach(function(hh,i){ html += '<th data-col="'+i+'">'+hh+'</th>'; });
+  html += '</tr></thead><tbody id="tasks-body"></tbody></table></div></div>';
+
+  document.getElementById('tab-tasks').innerHTML = html;
+  renderTaskRows(sortedOpen);
+  document.getElementById('tasks-search').oninput = function(e){
+    var q = e.target.value.toLowerCase();
+    var filtered = sortedOpen.filter(function(t){
+      return (t.subject||'').toLowerCase().indexOf(q) >= 0
+          || (t.assigned||'').toLowerCase().indexOf(q) >= 0
+          || (t.created_by||'').toLowerCase().indexOf(q) >= 0
+          || (t.text||'').toLowerCase().indexOf(q) >= 0;
+    });
+    renderTaskRows(filtered);
+  };
+
+  // Trend chart
+  var days = periodDateRange();
+  var byDay = {};
+  tasksFiltered.forEach(function(t){
+    var dc = pd(t.created);
+    if (dc){
+      var k = dc.toISOString().slice(0,10);
+      if (!byDay[k]) byDay[k] = { c:0, x:0 };
+      byDay[k].c++;
+    }
+    if (!t.is_open){
+      var dd = pd(t.due);
+      if (dd){
+        var k2 = dd.toISOString().slice(0,10);
+        if (!byDay[k2]) byDay[k2] = { c:0, x:0 };
+        byDay[k2].x++;
+      }
     }
   });
-  html += '</tbody></table></div>';
-  if (list.length > 200) html += '<div style="padding:10px;color:var(--muted);font-size:11px">Showing 200 of ' + list.length + ' · use search to narrow</div>';
-  document.getElementById('flow-list-wrap').innerHTML = html;
-}
-
-function toggleFlow(idx, oid) {
-  if (FLOW_EXPANDED[oid]) delete FLOW_EXPANDED[oid];
-  else FLOW_EXPANDED[oid] = true;
-  renderFlowList();
-}
-
-function renderFlowTimeline(oid) {
-  var events = (ACTS_BY_OID[oid] || []).slice();
-  if (!events.length) {
-    return '<div class="tl-detail"><div class="empty" style="padding:18px">No timeline events for this opportunity.</div></div>';
-  }
-  var h = '<div class="tl-detail"><div style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:8px">Timeline · ' + events.length + ' events · oldest first</div>';
-  events.forEach(function(e){
-    var d = pd(e.date);
-    var typeColor = {
-      'Note':'rgba(10,61,92,.12)',
-      'Workflow':'rgba(148,163,184,.18)',
-      'Task':'rgba(61,255,192,.2)',
-      'Call':'rgba(59,130,246,.15)',
-      'Meeting':'rgba(245,158,11,.15)',
-      'Email':'rgba(139,92,246,.15)',
-      'Sms':'rgba(236,72,153,.15)',
-      'Wave':'rgba(203,213,225,.4)'
-    }[e.type] || 'rgba(107,126,150,.12)';
-    h += '<div class="tl-event">';
-    h +=   '<span class="tl-date">' + (d ? fmtDT(d) : '—') + '</span>';
-    h +=   '<span class="tl-type" style="background:' + typeColor + ';color:var(--navy)">' + esc(e.type || '—') + '</span>';
-    if (e.wf) h += '<span class="tl-type" style="background:rgba(245,158,11,.18);color:#92400e">' + esc(e.wf) + '</span>';
-    if (e.by) h += '<span class="tl-by">' + esc(e.by) + '</span>';
-    if (e.subj) h += ' <strong style="color:var(--navy)">' + esc(e.subj) + '</strong>';
-    if (e.text) h += '<div style="margin-top:5px;color:#374151;white-space:pre-wrap;line-height:1.5">' + esc(e.text) + '</div>';
-    h += '</div>';
+  var agg = aggregateDates(days, FILTERS.gran, function(d){
+    return byDay[d.toISOString().slice(0,10)] || { c:0, x:0 };
   });
-  h += '</div>';
-  return h;
+  renderTrendChart('ch-tasks-trend', agg.labels, [
+    { label:'Created', data:agg.values.map(function(v){return v.c||0}), backgroundColor:'#0a3d5c', borderRadius:3 },
+    { label:'Closed',  data:agg.values.map(function(v){return v.x||0}), backgroundColor:'#10b981', borderRadius:3 }
+  ], 'bar');
 }
 
-// ──────────────────────────────────────────────────────────────────
+function renderTaskRows(tasks){
+  var tbody = document.getElementById('tasks-body');
+  var now = new Date(); now.setHours(0,0,0,0);
+  if (!tasks.length){ tbody.innerHTML = '<tr><td colspan="7" class="empty">No tasks match.</td></tr>'; return; }
+  var html = '';
+  tasks.slice(0,300).forEach(function(t){
+    var due = pd(t.due);
+    var overdue = due && due < now;
+    var rowClass = overdue ? 'tasks-row-overdue' : '';
+    var dueBadge = due ? '<span class="badge ' + (overdue?'b-red':'b-muted') + '">' + fmt(due) + (overdue?' ⚠':'') + '</span>' : '<span class="badge b-muted">—</span>';
+    html += '<tr class="'+rowClass+'"><td>'+esc(t.subject)+'</td><td>'+esc(t.task_type)+'</td>'
+      + '<td>'+esc(t.assigned)+'</td>'
+      + '<td style="color:var(--muted);font-size:11px">'+esc(t.created_by)+'</td>'
+      + '<td><span style="font-size:10.5px;color:var(--muted);font-family:Space Mono,monospace">'+(t.created?fmt(pd(t.created)):'—')+'</span></td>'
+      + '<td>'+dueBadge+'</td>'
+      + '<td>'+esc(t.status)+'</td></tr>';
+  });
+  if (tasks.length > 300) html += '<tr><td colspan="7" class="empty">Showing first 300 of '+tasks.length+'.</td></tr>';
+  tbody.innerHTML = html;
+}
+
+// ──────────────────────────────────────────────────────────────────────────
 // ACTIVITY TRENDS
-// ──────────────────────────────────────────────────────────────────
-function buildTrends() {
+// ──────────────────────────────────────────────────────────────────────────
+function buildTrends(){
+  var p = periodLabel();
   var actsP = filteredActs();
-  var p = FILTERS.period;
-
-  // Daily counts by type
-  var daily = {}; var typeSet = {};
-  actsP.forEach(function(a){
-    var d = pd(a.date); if (!d) return;
-    var key = d.toISOString().slice(0,10);
-    if (!daily[key]) daily[key] = {};
-    daily[key][a.type] = (daily[key][a.type]||0)+1;
-    typeSet[a.type] = true;
-  });
-  var days = Object.keys(daily).sort();
-  var types = Object.keys(typeSet).sort();
-  var typeColors = { Call:'#3b82f6', Note:'#0a3d5c', Email:'#8b5cf6', Sms:'#ec4899', Task:'#3dffc0', Meeting:'#f59e0b', Workflow:'#94a3b8', Wave:'#cbd5e1' };
 
   var html = '<div class="kpis">';
   html += kpi('navy',  'Activities (' + p + ')', actsP.length);
-  html += kpi('blue',  'Daily Avg', days.length ? (actsP.length/days.length).toFixed(1) : '0');
-  html += kpi('teal',  'Distinct Days', days.length);
-  html += kpi('amber', 'Distinct Types', types.length);
+  html += kpi('blue',  'Distinct Users', new Set(actsP.map(function(a){return a.by;}).filter(Boolean)).size);
+  html += kpi('teal',  'Distinct Opps', new Set(actsP.map(function(a){return a.oid;}).filter(Boolean)).size);
   html += '</div>';
 
-  html += '<div class="card"><div class="card-h"><div><div class="card-title">Daily Activity by Type</div><div class="card-sub">Stacked area · ' + p + '</div></div></div>';
-  html += '<div class="chart-wrap-tall"><canvas id="ch-daily"></canvas></div></div>';
-
-  // Hour x Day-of-week heatmap
-  var grid = []; for (var i=0;i<24;i++){ grid.push([0,0,0,0,0,0,0]); }
-  actsP.forEach(function(a){
-    var d = pd(a.date); if (!d) return;
-    var h = d.getHours(); var dow = d.getDay(); // 0=Sun
-    grid[h][dow]++;
-  });
-  var maxCell = 1; grid.forEach(function(row){ row.forEach(function(v){ if(v>maxCell) maxCell=v; }); });
-
-  var dayLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  var hmHtml = '<div class="hm">';
-  hmHtml += '<div></div>';
-  dayLabels.forEach(function(l){ hmHtml += '<div class="hm-lbl" style="text-align:center;justify-content:center">'+l+'</div>'; });
-  for (var hr=6; hr<23; hr++) {  // 6am - 10pm
-    var lbl = hr === 0 ? '12am' : (hr<12?hr+'am':hr===12?'12pm':(hr-12)+'pm');
-    hmHtml += '<div class="hm-lbl">'+lbl+'</div>';
-    for (var d=0; d<7; d++) {
-      var v = grid[hr][d];
-      var alpha = maxCell > 0 ? Math.min(1, v/maxCell) : 0;
-      var color = 'rgba(10,61,92,' + (alpha * 0.85 + 0.05) + ')';
-      var txt = v > 0 ? v : '';
-      var fontColor = alpha > 0.5 ? '#fff' : 'var(--text)';
-      hmHtml += '<div class="hm-cell" style="background:'+color+';color:'+fontColor+'">'+txt+'</div>';
-    }
-  }
-  hmHtml += '</div>';
-
   html += '<div class="g2">';
-  html += '<div class="card"><div class="card-h"><div><div class="card-title">Hour × Day Heatmap</div><div class="card-sub">When activities happen · all hours combined</div></div></div>'+hmHtml+'</div>';
+  html += buildTrendCard('Activity Type Mix Trend', 'Activities by type per ' + granLabel(), 'ch-tr-mix');
+  html += buildTrendCard('Day-of-Week Heatmap', 'Activities per day-of-week × hour-of-day · ' + p, 'ch-tr-dow');
+  html += '</div>';
 
-  // Top users time series
-  var byUserDaily = {};
-  actsP.forEach(function(a){
-    if (!a.by) return; var d = pd(a.date); if (!d) return;
-    var key = d.toISOString().slice(0,10);
-    if (!byUserDaily[a.by]) byUserDaily[a.by] = {};
-    byUserDaily[a.by][key] = (byUserDaily[a.by][key]||0)+1;
-  });
-  var topUsers = Object.keys(byUserDaily).map(function(k){ return [k, Object.values(byUserDaily[k]).reduce(function(s,v){return s+v},0)]; })
-    .sort(function(a,b){return b[1]-a[1]}).slice(0,6).map(function(x){return x[0]});
-
-  html += '<div class="card"><div class="card-h"><div><div class="card-title">Top 6 Users — Daily Activity</div><div class="card-sub">Time series · ' + p + '</div></div></div>';
-  html += '<div class="chart-wrap-tall"><canvas id="ch-users"></canvas></div></div></div>';
+  html += buildTrendCard('Cumulative Activity Curve', 'Running total · all activities · ' + p, 'ch-tr-cum');
 
   document.getElementById('tab-trends').innerHTML = html;
 
-  // Stacked daily chart
-  var datasets = types.map(function(t){
-    return {
-      label: t,
-      data: days.map(function(d){ return (daily[d][t]||0); }),
-      backgroundColor: typeColors[t] || '#6b7280',
-      borderColor: typeColors[t] || '#6b7280',
-      fill: true,
-    };
+  var days = periodDateRange();
+  var byDayType = {};
+  actsP.forEach(function(a){
+    var d = pd(a.date); if (!d) return;
+    var k = d.toISOString().slice(0,10);
+    if (!byDayType[k]) byDayType[k] = {};
+    byDayType[k][a.type] = (byDayType[k][a.type]||0) + 1;
   });
-  destroyChart('daily');
-  CHARTS.daily = new Chart(document.getElementById('ch-daily'), {
-    type: 'line',
-    data: { labels: days, datasets: datasets },
-    options: { responsive:true, maintainAspectRatio:false,
-      scales: { x:{ ticks:{font:{size:9},maxTicksLimit:12} }, y:{ stacked:true, beginAtZero:true } },
-      plugins: { legend:{position:'top',labels:{font:{size:11}}}, tooltip:{mode:'index',intersect:false} },
-      elements: { point:{radius:0} }
+  var typeColors = { Call:'#3b82f6', Note:'#0a3d5c', Email:'#8b5cf6', Sms:'#ec4899', Task:'#3dffc0', Meeting:'#f59e0b', Workflow:'#94a3b8', Wave:'#cbd5e1' };
+  var allTypes = {};
+  Object.values(byDayType).forEach(function(o){ Object.keys(o).forEach(function(t){ allTypes[t]=true; }); });
+  var typeList = Object.keys(allTypes).sort();
+  var aggMix = aggregateDates(days, FILTERS.gran, function(d){
+    return byDayType[d.toISOString().slice(0,10)] || {};
+  });
+  renderTrendChart('ch-tr-mix', aggMix.labels, typeList.map(function(t){
+    return { label:t, data:aggMix.values.map(function(v){return v[t]||0}), backgroundColor:typeColors[t]||'#64748b', stack:'a', borderRadius:3 };
+  }), 'bar');
+
+  // Day-of-week × hour heatmap
+  var dowHr = {};
+  for (var d = 0; d < 7; d++){ for (var h = 0; h < 24; h++){ dowHr[d+'-'+h] = 0; } }
+  actsP.forEach(function(a){
+    var dt = pd(a.date); if (!dt) return;
+    dowHr[dt.getDay() + '-' + dt.getHours()]++;
+  });
+  destroyChart('ch-tr-dow');
+  var dowEl = document.getElementById('ch-tr-dow');
+  if (dowEl){
+    var dowLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    var datasets = [];
+    var maxV = 0;
+    for (var dd = 0; dd < 7; dd++){
+      var row = [];
+      for (var hh = 0; hh < 24; hh++){
+        var v = dowHr[dd+'-'+hh];
+        row.push(v); if (v > maxV) maxV = v;
+      }
+      datasets.push({ label: dowLabels[dd], data: row, backgroundColor:'#0a3d5c', stack: dowLabels[dd], borderRadius:0 });
+    }
+    CHARTS['ch-tr-dow'] = new Chart(dowEl, {
+      type:'bar',
+      data:{ labels: Array.from({length:24},function(_,i){return i+'h'}), datasets: datasets },
+      options:{ responsive:true, maintainAspectRatio:false, scales:{ x:{ stacked:true, ticks:{font:{size:8.5}, maxTicksLimit:12} }, y:{ stacked:true, ticks:{font:{size:9}} } }, plugins:{ legend:{ position:'top', labels:{ font:{size:9}, boxWidth:10 } } } }
+    });
+  }
+
+  // Cumulative
+  var cumByDay = {};
+  actsP.forEach(function(a){
+    var dt = pd(a.date); if (!dt) return;
+    var k = dt.toISOString().slice(0,10);
+    cumByDay[k] = (cumByDay[k]||0) + 1;
+  });
+  var aggCum = aggregateDates(days, FILTERS.gran, function(d){ return cumByDay[d.toISOString().slice(0,10)] || 0; });
+  var running = 0;
+  var cumValues = aggCum.values.map(function(v){ running += v; return running; });
+  renderTrendChart('ch-tr-cum', aggCum.labels, [
+    { label:'Cumulative Activities', data:cumValues, borderColor:'#0a3d5c', backgroundColor:'rgba(10,61,92,.12)', tension:0.25, fill:true }
+  ], 'line');
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// REFERRAL SOURCES (NEW — change #9)
+// ──────────────────────────────────────────────────────────────────────────
+function buildReferrals(){
+  var oppsP = periodOpps();
+  var p = periodLabel();
+
+  // Bucket opps by normalized referral name
+  function normRef(s){
+    var x = (s||'').trim();
+    if (!x) return '(unspecified)';
+    return x;
+  }
+
+  var bySrc = {};
+  oppsP.forEach(function(o){
+    var src = normRef(o.ref);
+    if (!bySrc[src]) bySrc[src] = { total:0, active:0, scheduled:0, admitted:0, lost:0, abandoned:0, opps:[], byLOC:{} };
+    var b = bySrc[src];
+    b.total++;
+    b.opps.push(o);
+    if (o.outcome === 'Active') b.active++;
+    else if (o.outcome === 'Scheduled') b.scheduled++;
+    else if (isAdmitted(o)) b.admitted++;
+    else if (o.outcome === 'Lost') b.lost++;
+    else if (o.outcome === 'Abandoned') b.abandoned++;
+
+    // LOC drill — count opps per LOC for this source
+    var loc = (o.loc||'').trim() || '(unspecified)';
+    if (!b.byLOC[loc]) b.byLOC[loc] = { total:0, active:0, scheduled:0, admitted:0, lost:0, abandoned:0 };
+    b.byLOC[loc].total++;
+    if (o.outcome === 'Active') b.byLOC[loc].active++;
+    else if (o.outcome === 'Scheduled') b.byLOC[loc].scheduled++;
+    else if (isAdmitted(o)) b.byLOC[loc].admitted++;
+    else if (o.outcome === 'Lost') b.byLOC[loc].lost++;
+    else if (o.outcome === 'Abandoned') b.byLOC[loc].abandoned++;
+  });
+
+  var srcRows = Object.keys(bySrc).map(function(k){
+    var b = bySrc[k];
+    return {
+      name:k, total:b.total, active:b.active, scheduled:b.scheduled, admitted:b.admitted,
+      lost:b.lost, aband:b.abandoned, byLOC:b.byLOC, opps:b.opps,
+      rate: b.total ? b.admitted/b.total : 0
+    };
+  }).sort(function(a,b){ return b.total - a.total; });
+
+  // KPIs
+  var totalSources = srcRows.length;
+  var totalRefs   = srcRows.reduce(function(s,r){return s+r.total;}, 0);
+  var topSrc      = srcRows[0] || null;
+  var zeroAdmit   = srcRows.filter(function(r){ return r.admitted === 0 && r.total > 0; }).length;
+
+  var html = '<div class="kpis">';
+  html += kpi('navy',  'Total Referral Sources (' + p + ')', totalSources);
+  html += kpi('blue',  'Total Referrals', totalRefs);
+  html += kpi('teal',  'Top Source', topSrc ? topSrc.name : '—', topSrc ? (topSrc.total + ' opps') : '');
+  html += kpi('green', 'Top Source Admit Rate', topSrc ? (topSrc.rate*100).toFixed(0) + '%' : '—');
+  html += kpi('amber', 'Sources with 0 Admits', zeroAdmit);
+  html += '</div>';
+
+  // Trending chart — top 10 sources stacked by outcome over time
+  html += buildTrendCard('Top 10 Sources Over Time', 'Stacked bar of top 10 sources per ' + granLabel() + ' · ' + p, 'ch-ref-trend');
+
+  // ── PRIMARY: Outcome breakdown matrix (sources × outcomes, with LOC sub-rows) ──
+  html += '<div class="card">';
+  html += '<div class="card-h"><div><div class="card-title">Source × Outcome Breakdown</div><div class="card-sub">Click any source to drill into LOC distribution · sub-rows show the opp\'s assigned Level of Care · ' + p + '</div>';
+  html += '</div><div class="card-actions">';
+  html += '<button class="card-act-btn" id="ref-collapseall">COLLAPSE ALL</button>';
+  html += '<button class="card-act-btn" id="ref-expandall">EXPAND ALL</button>';
+  html += '</div></div>';
+  html += renderRefOutcomeMatrix(srcRows);
+  html += '</div>';
+
+  // ── SECONDARY: Trending matrix for top-10 (sources × time-period) ──
+  html += '<div class="card">';
+  html += '<div class="card-h"><div><div class="card-title">Top 10 Source Volume Trend</div><div class="card-sub">Referrals per ' + granLabel() + ' · newest first · top 10 by total volume · ' + p + '</div></div></div>';
+  html += renderRefTrendMatrix(srcRows.slice(0,10));
+  html += '</div>';
+
+  // Methodology footnote
+  html += methodology(
+    '<div class="methodology-section">Source normalization</div>' +
+    '<p>Sources come from the <code>referral name</code> column on each opportunity. Names are trimmed and case-preserved — exact-match grouping. Empty values fall into <strong>(unspecified)</strong>. There is no fuzzy matching: "Acme Hospital" and "Acme Hosp" are treated as different sources.</p>' +
+    '<div class="methodology-section">Why some sources show 0 LOC data</div>' +
+    '<p>Level of Care is assigned by clinical staff <strong>after</strong> intake. Opps still in early funnel stages (Entered, VOB, Pre-Screen) often have no LOC yet. When a source\'s opps are mostly Lost or Abandoned before LOC assignment, the LOC sub-rows will show "LOC not yet assigned for any opps from this source." This is expected and does not mean the source is bad — it means the opps haven\'t reached the assignment step.</p>' +
+    '<div class="methodology-section">Outcome columns</div>' +
+    '<ul>' +
+      '<li><strong>Active / Scheduled</strong> — Opp is currently in the pipeline.</li>' +
+      '<li><strong>Admitted</strong> — Combines Admitted and AdmittedLegacy outcomes.</li>' +
+      '<li><strong>Lost / Abandoned</strong> — Resolved out without admit.</li>' +
+      '<li><strong>Admit %</strong> — Admitted ÷ Total. Heatmap color: red (low) → green (high).</li>' +
+    '</ul>' +
+    '<div class="methodology-section">Notes</div>' +
+    '<ul>' +
+      '<li>Period scoping uses opp <strong>creation</strong> date — an opp from this source created in March that admitted in May appears in March\'s slice, not May\'s.</li>' +
+      '<li>Top 10 in the trend chart and trend matrix is computed from total volume in the selected period — different periods may produce different rankings.</li>' +
+    '</ul>'
+  );
+
+  document.getElementById('tab-referrals').innerHTML = html;
+
+  var btnCol = document.getElementById('ref-collapseall');
+  if (btnCol) btnCol.onclick = function(){
+    srcRows.forEach(function(r){ MTX_COLLAPSED['mtx-ref-outcome|ref-'+r.name] = true; });
+    buildReferrals();
+  };
+  var btnExp = document.getElementById('ref-expandall');
+  if (btnExp) btnExp.onclick = function(){
+    srcRows.forEach(function(r){ MTX_COLLAPSED['mtx-ref-outcome|ref-'+r.name] = false; });
+    buildReferrals();
+  };
+
+  // Trend chart: top 10 stacked
+  var top10 = srcRows.slice(0,10);
+  var days = periodDateRange();
+  var palette = ['#0a3d5c','#10b981','#3b82f6','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#ef4444','#84cc16','#a855f7'];
+  var byDayBySrc = {};
+  oppsP.forEach(function(o){
+    var src = normRef(o.ref);
+    var d = pd(o.co); if (!d) return;
+    var k = d.toISOString().slice(0,10);
+    if (!byDayBySrc[k]) byDayBySrc[k] = {};
+    byDayBySrc[k][src] = (byDayBySrc[k][src]||0) + 1;
+  });
+  var aggLabels = aggregateDates(days, FILTERS.gran, function(){return 0;}).labels;
+  var datasets = top10.map(function(r, idx){
+    var aggR = aggregateDates(days, FILTERS.gran, function(d){
+      var k = d.toISOString().slice(0,10);
+      return (byDayBySrc[k] && byDayBySrc[k][r.name]) || 0;
+    });
+    return { label: r.name, data: aggR.values, backgroundColor: palette[idx], stack:'a', borderRadius:2 };
+  });
+  renderTrendChart('ch-ref-trend', aggLabels, datasets, 'bar');
+}
+
+function renderRefOutcomeMatrix(srcRows){
+  var outcomeColumns = [
+    { key: 'created',   label: 'Created' },
+    { key: 'active',    label: 'Active' },
+    { key: 'scheduled', label: 'Scheduled' },
+    { key: 'admitted',  label: 'Admitted' },
+    { key: 'lost',      label: 'Lost' },
+    { key: 'aband',     label: 'Abandoned' },
+    { key: 'admitPct',  label: 'Admit %' }
+  ];
+
+  var html = '<div class="matrix-wrap"><table class="mtx" id="mtx-ref-outcome"><thead><tr>';
+  html += '<th class="lbl">Source</th>';
+  outcomeColumns.forEach(function(c){ html += '<th>' + esc(c.label) + '</th>'; });
+  html += '<th class="total-col">TOTAL</th>';
+  html += '</tr></thead><tbody>';
+
+  if (!srcRows.length){
+    html += '<tr><td class="lbl">No referrals in period.</td>';
+    outcomeColumns.forEach(function(){ html += '<td></td>'; });
+    html += '<td class="total-col"></td></tr>';
+  }
+
+  // For per-row heatmap on outcome columns, find max across the 6 outcome columns per row
+  srcRows.forEach(function(r){
+    var values = [r.total, r.active, r.scheduled, r.admitted, r.lost, r.aband];
+    var rowMax = Math.max.apply(null, values.concat([1]));
+    var rowId = 'ref-' + r.name;
+    var collapsed = isMatrixRowCollapsed('mtx-ref-outcome', rowId);
+
+    html += '<tr class="expandable' + (collapsed?' collapsed':'') + '" onclick="toggleMatrixRow(\'mtx-ref-outcome\',\'' + esc(rowId) + '\')">';
+    html += '<td class="lbl">' + esc(r.name) + '</td>';
+    // Created column = total
+    html += '<td style="background:' + heatColor(r.total, rowMax, [10,61,92]) + '"><span class="mtx-cell-num">' + r.total + '</span></td>';
+    html += '<td style="background:' + heatColor(r.active, rowMax, [10,61,92]) + '">' + (r.active>0?'<span class="mtx-cell-num">'+r.active+'</span>':'<span style="color:#cbd5e1">0</span>') + '</td>';
+    html += '<td style="background:' + heatColor(r.scheduled, rowMax, [10,61,92]) + '">' + (r.scheduled>0?'<span class="mtx-cell-num">'+r.scheduled+'</span>':'<span style="color:#cbd5e1">0</span>') + '</td>';
+    html += '<td style="background:' + heatColor(r.admitted, rowMax, [16,185,129]) + '">' + (r.admitted>0?'<span class="mtx-cell-num">'+r.admitted+'</span>':'<span style="color:#cbd5e1">0</span>') + '</td>';
+    html += '<td style="background:' + heatColor(r.lost, rowMax, [245,158,11]) + '">' + (r.lost>0?'<span class="mtx-cell-num">'+r.lost+'</span>':'<span style="color:#cbd5e1">0</span>') + '</td>';
+    html += '<td style="background:' + heatColor(r.aband, rowMax, [239,68,68]) + '">' + (r.aband>0?'<span class="mtx-cell-num">'+r.aband+'</span>':'<span style="color:#cbd5e1">0</span>') + '</td>';
+    html += '<td style="background:' + heatColorRedGreen(r.rate) + '"><strong>' + (r.rate*100).toFixed(0) + '%</strong></td>';
+    html += '<td class="total-col">' + r.total + '</td>';
+    html += '</tr>';
+
+    // LOC sub-rows (only if expanded)
+    if (!collapsed){
+      var locKeys = Object.keys(r.byLOC).sort(function(a,b){ return r.byLOC[b].total - r.byLOC[a].total; });
+      // Filter out unspecified-only when nothing was assigned
+      var hasAssigned = (r.active + r.scheduled + r.admitted) > 0;
+      if (!hasAssigned){
+        html += '<tr class="sub-row"><td class="lbl sub" colspan="' + (outcomeColumns.length + 2) + '" style="font-style:italic;color:var(--muted)">LOC not yet assigned for any opps from this source.</td></tr>';
+      } else {
+        locKeys.forEach(function(loc){
+          var L = r.byLOC[loc];
+          html += '<tr class="sub-row" data-parent="' + esc(rowId) + '">';
+          html += '<td class="lbl sub">' + esc(loc) + '</td>';
+          html += '<td>' + (L.total>0?'<span class="mtx-cell-num" style="font-weight:500;color:var(--muted)">'+L.total+'</span>':'<span style="color:#cbd5e1">0</span>') + '</td>';
+          html += '<td>' + (L.active>0?'<span class="mtx-cell-num" style="font-weight:500;color:var(--muted)">'+L.active+'</span>':'<span style="color:#cbd5e1">0</span>') + '</td>';
+          html += '<td>' + (L.scheduled>0?'<span class="mtx-cell-num" style="font-weight:500;color:var(--muted)">'+L.scheduled+'</span>':'<span style="color:#cbd5e1">0</span>') + '</td>';
+          html += '<td>' + (L.admitted>0?'<span class="mtx-cell-num" style="font-weight:500;color:var(--muted)">'+L.admitted+'</span>':'<span style="color:#cbd5e1">0</span>') + '</td>';
+          html += '<td>' + (L.lost>0?'<span class="mtx-cell-num" style="font-weight:500;color:var(--muted)">'+L.lost+'</span>':'<span style="color:#cbd5e1">0</span>') + '</td>';
+          html += '<td>' + (L.aband>0?'<span class="mtx-cell-num" style="font-weight:500;color:var(--muted)">'+L.aband+'</span>':'<span style="color:#cbd5e1">0</span>') + '</td>';
+          var locRate = L.total ? L.admitted/L.total : 0;
+          html += '<td>' + (L.total ? (locRate*100).toFixed(0)+'%' : '—') + '</td>';
+          html += '<td class="total-col" style="background:#f8fafc;font-weight:500;color:var(--muted)">' + L.total + '</td>';
+          html += '</tr>';
+        });
+      }
     }
   });
 
-  // Top users line chart
-  var userColors = ['#0a3d5c','#3dffc0','#3b82f6','#f59e0b','#10b981','#8b5cf6'];
-  var userDatasets = topUsers.map(function(u, i){
-    return {
-      label: u,
-      data: days.map(function(d){ return byUserDaily[u][d] || 0; }),
-      borderColor: userColors[i],
-      backgroundColor: userColors[i] + '33',
-      tension: 0.3, fill: false,
-    };
+  // TOTAL row
+  if (srcRows.length){
+    var t = { total:0, active:0, scheduled:0, admitted:0, lost:0, aband:0 };
+    srcRows.forEach(function(r){
+      t.total += r.total; t.active += r.active; t.scheduled += r.scheduled;
+      t.admitted += r.admitted; t.lost += r.lost; t.aband += r.aband;
+    });
+    var tRate = t.total ? t.admitted/t.total : 0;
+    html += '<tr class="totals"><td class="lbl">TOTAL</td>';
+    html += '<td>' + t.total + '</td>';
+    html += '<td>' + t.active + '</td>';
+    html += '<td>' + t.scheduled + '</td>';
+    html += '<td>' + t.admitted + '</td>';
+    html += '<td>' + t.lost + '</td>';
+    html += '<td>' + t.aband + '</td>';
+    html += '<td>' + (tRate*100).toFixed(0) + '%</td>';
+    html += '<td class="total-col">' + t.total + '</td></tr>';
+  }
+  html += '</tbody></table></div>';
+  return html;
+}
+
+function renderRefTrendMatrix(top10){
+  if (!top10.length){
+    return '<div class="empty">No referral sources in period.</div>';
+  }
+  var days = periodDateRange();
+  var byDayBySrc = {};
+  // Per-source per-day count from top10's opps
+  top10.forEach(function(r){
+    r.opps.forEach(function(o){
+      var d = pd(o.co); if (!d) return;
+      var k = d.toISOString().slice(0,10);
+      if (!byDayBySrc[r.name]) byDayBySrc[r.name] = {};
+      byDayBySrc[r.name][k] = (byDayBySrc[r.name][k]||0) + 1;
+    });
   });
-  destroyChart('users');
-  CHARTS.users = new Chart(document.getElementById('ch-users'), {
-    type: 'line',
-    data: { labels: days, datasets: userDatasets },
-    options: { responsive:true, maintainAspectRatio:false,
-      scales: { x:{ ticks:{font:{size:9},maxTicksLimit:10} }, y:{ beginAtZero:true } },
-      plugins: { legend:{position:'top',labels:{font:{size:11}}} },
-      elements: { point:{radius:0} }
-    }
+
+  var labelsArr = aggregateDates(days, FILTERS.gran, function(){return 0;}).labels.slice().reverse();
+
+  var rows = top10.map(function(r){
+    var perDay = byDayBySrc[r.name] || {};
+    var aggR = aggregateDates(days, FILTERS.gran, function(d){ return perDay[d.toISOString().slice(0,10)] || 0; });
+    var values = aggR.values.slice().reverse();
+    return { id:'reftrend-'+r.name, label:r.name, values:values, total: values.reduce(function(s,x){return s+(x||0);}, 0) };
+  });
+
+  var totalsValues = [];
+  for (var i = 0; i < labelsArr.length; i++){
+    var s = 0;
+    rows.forEach(function(r){ s += (r.values[i]||0); });
+    totalsValues.push(s);
+  }
+  var grandTotal = totalsValues.reduce(function(s,x){return s+x;}, 0);
+
+  return renderMatrix(rows, labelsArr.map(function(l){ return {key:l, label:l}; }), {
+    firstColLabel: 'Source',
+    showPct: false,
+    totalsRow: { label: 'TOTAL', values: totalsValues, total: grandTotal },
+    matrixId: 'mtx-ref-trend',
+    emptyLabel: 'No referrals in period.'
   });
 }
 
-// ── Initial render — gated by sign-in ─────────────────────────────────────
-function bootstrapDashboard() {
-  // Called by enterDashboard() once the user has authenticated against the
-  // Provident tenant. Defers all data-bound rendering until then.
+// ──────────────────────────────────────────────────────────────────────────
+// EXCEL EXPORT — multi-sheet workbook of current filtered view
+// ──────────────────────────────────────────────────────────────────────────
+function exportToExcel(){
+  if (typeof XLSX === 'undefined'){ alert('Excel library not loaded.'); return; }
+  var wb = XLSX.utils.book_new();
+
+  // 1) Filtered Opportunities
+  var oppsP = periodOpps();
+  var oppsRows = oppsP.map(function(o){
+    return {
+      ID: o.id, Patient: o.name, 'Created On': o.co, Outcome: o.outcome,
+      Stage: o.stage, 'Admit Date': o.admit, LOC: o.loc, Insurance: o.ins,
+      'Referral Name': o.ref, Rep: o.rep,
+      'Lost Reason': o.lost_r, 'Abandoned Reason': o.aband_r,
+      'Outcome Date': o.outcome_date, 'Outcome Date Proxy': o.outcome_proxy ? 'Yes' : 'No',
+      'Scheduled Date': o.scheduled_date, 'Scheduled Date Proxy': o.scheduled_proxy ? 'Yes' : 'No'
+    };
+  });
+  if (oppsRows.length){
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(oppsRows), 'Opportunities');
+  }
+
+  // 2) Filtered Activities
+  var actsP = filteredActs();
+  var actsRows = actsP.map(function(a){
+    return {
+      'Opp ID': a.oid, Type: a.type, 'Created By': a.by, Date: a.date,
+      Subject: a.subj, Text: (a.text||'').slice(0,500), Workflow: a.wf, Associated: a.assoc,
+      'Task Type': a.task_type, 'Task Status': a.task_status, 'Task Due': a.task_due_date,
+      'Assigned To': a.assigned_to_name
+    };
+  });
+  if (actsRows.length){
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(actsRows), 'Activities');
+  }
+
+  // 3) User Productivity summary
+  var byUser = {};
+  actsP.forEach(function(a){
+    if (!a.by) return;
+    if (!byUser[a.by]) byUser[a.by] = { total:0, types:{}, opps:new Set(), days:new Set() };
+    byUser[a.by].total++;
+    byUser[a.by].types[a.type] = (byUser[a.by].types[a.type]||0)+1;
+    if (a.oid) byUser[a.by].opps.add(a.oid);
+    var d = pd(a.date); if (d) byUser[a.by].days.add(d.toISOString().slice(0,10));
+  });
+  var prodRows = Object.keys(byUser).map(function(k){
+    var u = byUser[k];
+    return {
+      User: k, Total: u.total,
+      Calls: u.types['Call']||0, Notes: u.types['Note']||0,
+      'Email/SMS': (u.types['Email']||0)+(u.types['Sms']||0),
+      Tasks: u.types['Task']||0, Meetings: u.types['Meeting']||0,
+      'Distinct Opps': u.opps.size, 'Days Active': u.days.size
+    };
+  }).sort(function(a,b){ return b.Total - a.Total; });
+  if (prodRows.length){
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(prodRows), 'User Productivity');
+  }
+
+  // 4) Referral Sources
+  var bySrc = {};
+  oppsP.forEach(function(o){
+    var src = (o.ref||'').trim() || '(unspecified)';
+    if (!bySrc[src]) bySrc[src] = { total:0, active:0, scheduled:0, admitted:0, lost:0, aband:0 };
+    var b = bySrc[src];
+    b.total++;
+    if (o.outcome === 'Active') b.active++;
+    else if (o.outcome === 'Scheduled') b.scheduled++;
+    else if (isAdmitted(o)) b.admitted++;
+    else if (o.outcome === 'Lost') b.lost++;
+    else if (o.outcome === 'Abandoned') b.aband++;
+  });
+  var refRows = Object.keys(bySrc).map(function(k){
+    var b = bySrc[k];
+    return {
+      Source: k, 'Total Referrals': b.total, Active: b.active, Scheduled: b.scheduled,
+      Admitted: b.admitted, Lost: b.lost, Abandoned: b.aband,
+      'Admit Rate': b.total ? (b.admitted/b.total*100).toFixed(1) + '%' : '—'
+    };
+  }).sort(function(a,b){ return b['Total Referrals'] - a['Total Referrals']; });
+  if (refRows.length){
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(refRows), 'Referrals');
+  }
+
+  // 5) Tasks
+  var taskRows = TASKS.map(function(t){
+    return {
+      ID: t.id, Subject: t.subject, Type: t.task_type, Status: t.status,
+      'Created By': t.created_by, Assigned: t.assigned, Created: t.created,
+      Due: t.due, Open: t.is_open ? 'Yes' : 'No'
+    };
+  });
+  if (taskRows.length){
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(taskRows), 'Tasks');
+  }
+
+  // 6) Filter Metadata
+  var meta = [
+    ['Period', periodLabel()],
+    ['Group By', granLabel()],
+    ['Outcome', FILTERS.outcome || 'All'],
+    ['Users', FILTERS.users.length ? FILTERS.users.join(', ') : 'All'],
+    ['View', FILTERS.humanOnly ? 'Human Only' : 'All Activity'],
+    ['Generated', new Date().toLocaleString()],
+    ['Source Refresh', META.refreshed_at || '—'],
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Filter','Value']].concat(meta)), 'Export Info');
+
+  var fname = 'sunwave_crm_' + new Date().toISOString().slice(0,10) + '.xlsx';
+  XLSX.writeFile(wb, fname);
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// BOOTSTRAP — wire up filter handlers, populate user select, render initial tab
+// ──────────────────────────────────────────────────────────────────────────
+function bootstrapDashboard(){
+  // Sync label
+  var syncLbl = document.getElementById('syncLbl');
+  if (syncLbl){
+    var dt = META.refreshed_at ? new Date(META.refreshed_at) : null;
+    syncLbl.textContent = dt ? ('synced ' + dt.toLocaleString()) : 'synced —';
+  }
+
+  // Populate user select
+  var userSel = document.getElementById('userSel');
+  if (userSel){
+    userSel.innerHTML = '';
+    var allUsers = {};
+    ACTS.forEach(function(a){ if (a.by) allUsers[a.by] = true; });
+    Object.keys(allUsers).sort().forEach(function(u){
+      var o = document.createElement('option');
+      o.value = u; o.textContent = u;
+      userSel.appendChild(o);
+    });
+    userSel.onchange = function(){
+      FILTERS.users = Array.from(userSel.selectedOptions).map(function(o){ return o.value; });
+      rebuildAll();
+    };
+  }
+
+  // Period buttons (sidebar)
+  document.querySelectorAll('.sb-btn[data-period]').forEach(function(b){
+    b.onclick = function(){
+      document.querySelectorAll('.sb-btn[data-period]').forEach(function(x){ x.classList.remove('active'); });
+      b.classList.add('active');
+      FILTERS.period = b.dataset.period;
+      var cd = document.getElementById('customDates');
+      if (cd) cd.classList.toggle('show', FILTERS.period === 'CUSTOM');
+      rebuildAll();
+    };
+  });
+
+  // Custom date inputs
+  var cs = document.getElementById('customStart');
+  var ce = document.getElementById('customEnd');
+  if (cs){ cs.onchange = function(){ FILTERS.customStart = cs.value; if (FILTERS.period === 'CUSTOM') rebuildAll(); }; }
+  if (ce){ ce.onchange = function(){ FILTERS.customEnd = ce.value; if (FILTERS.period === 'CUSTOM') rebuildAll(); }; }
+
+  // Granularity buttons
+  document.querySelectorAll('.sb-btn[data-gran]').forEach(function(b){
+    b.onclick = function(){
+      document.querySelectorAll('.sb-btn[data-gran]').forEach(function(x){ x.classList.remove('active'); });
+      b.classList.add('active');
+      FILTERS.gran = b.dataset.gran;
+      rebuildAll();
+    };
+  });
+
+  // View buttons (human/all)
+  document.querySelectorAll('.sb-btn[data-view]').forEach(function(b){
+    b.onclick = function(){
+      document.querySelectorAll('.sb-btn[data-view]').forEach(function(x){ x.classList.remove('active'); });
+      b.classList.add('active');
+      FILTERS.humanOnly = (b.dataset.view === 'human');
+      rebuildAll();
+    };
+  });
+
+  // Outcome dropdown
+  var outSel = document.getElementById('outcomeSel');
+  if (outSel){ outSel.onchange = function(){ FILTERS.outcome = outSel.value; rebuildAll(); }; }
+
+  // Tab nav
+  document.querySelectorAll('.tnav').forEach(function(b){
+    b.onclick = function(){ showTab(b.dataset.tab, b); };
+  });
+
+  // Action buttons
+  var expBtn = document.getElementById('exportXlsxBtn');
+  if (expBtn) expBtn.onclick = exportToExcel;
+  var clrBtn = document.getElementById('clearFiltersBtn');
+  if (clrBtn) clrBtn.onclick = function(){
+    FILTERS = { period:'30D', customStart:null, customEnd:null, gran:'day', outcome:'', users:[], humanOnly:true };
+    MTX_COLLAPSED = {};
+    ACTMIX_SHOWALL = false;
+    FLOW_EXPANDED = {};
+    SORT_STATE = {};
+    // Reset UI
+    document.querySelectorAll('.sb-btn[data-period]').forEach(function(x){ x.classList.toggle('active', x.dataset.period === '30D'); });
+    document.querySelectorAll('.sb-btn[data-gran]').forEach(function(x){ x.classList.toggle('active', x.dataset.gran === 'day'); });
+    document.querySelectorAll('.sb-btn[data-view]').forEach(function(x){ x.classList.toggle('active', x.dataset.view === 'human'); });
+    var os = document.getElementById('outcomeSel'); if (os) os.value = '';
+    var us = document.getElementById('userSel'); if (us){ Array.from(us.options).forEach(function(o){ o.selected = false; }); }
+    var cs = document.getElementById('customStart'); if (cs) cs.value = '';
+    var ce = document.getElementById('customEnd'); if (ce) ce.value = '';
+    var cd = document.getElementById('customDates'); if (cd) cd.classList.remove('show');
+    rebuildAll();
+  };
+
+  // Footer
+  var footer = document.getElementById('footer');
+  if (footer){
+    footer.innerHTML = 'Provident Analytics · Sunwave CRM Dashboard · '
+      + (META.opps_count||0) + ' opportunities · '
+      + (META.acts_count||0) + ' activities · '
+      + (META.tasks_count||0) + ' tasks · '
+      + (META.users_count||0) + ' users · '
+      + 'last synced ' + (META.refreshed_at ? new Date(META.refreshed_at).toLocaleString() : '—');
+  }
+
+  // Render initial tab
   buildOverview();
 }
 </script>
