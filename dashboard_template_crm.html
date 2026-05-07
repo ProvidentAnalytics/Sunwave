@@ -211,16 +211,18 @@ body.locked > *:not(#signin-overlay){visibility:hidden}
 .mtx-cell-num{font-weight:600;color:var(--navy)}
 
 /* ── Funnel (#2) ──────────────────────────────────────────────────────── */
-.funnel{display:flex;flex-direction:column;align-items:center;gap:0;padding:8px 0}
-.funnel-band{display:flex;align-items:center;gap:14px;width:100%;padding:6px 14px;position:relative}
-.funnel-bar{background:linear-gradient(90deg,var(--navy),#0d4d72);color:#fff;padding:14px 18px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-family:'Space Mono',monospace;box-shadow:0 2px 6px rgba(10,61,92,.15);transition:all .25s}
-.funnel-bar:hover{box-shadow:0 4px 14px rgba(10,61,92,.25)}
-.funnel-bar-label{font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase}
-.funnel-bar-stats{display:flex;gap:14px;align-items:baseline;font-size:11px}
-.funnel-bar-count{font-size:18px;font-weight:700}
-.funnel-bar-pct{opacity:.75;font-size:10px}
-.funnel-arrow{display:flex;justify-content:center;width:100%;padding:2px 0;font-family:'Space Mono',monospace;font-size:10px;color:var(--muted)}
-.funnel-arrow strong{color:var(--navy);margin-left:4px}
+.funnel{display:flex;flex-direction:column;align-items:stretch;gap:0;padding:8px 0}
+.funnel-band{display:flex;justify-content:center;align-items:center;width:100%;padding:5px 14px;position:relative}
+.funnel-bar{background:linear-gradient(180deg,#0d4d72 0%,var(--navy) 100%);color:#fff;padding:13px 20px;border-radius:6px;display:flex;justify-content:center;align-items:center;gap:18px;font-family:'Space Mono',monospace;box-shadow:0 2px 6px rgba(10,61,92,.18);transition:all .25s;min-height:42px;text-align:center;white-space:nowrap;overflow:hidden}
+.funnel-bar:hover{box-shadow:0 4px 14px rgba(10,61,92,.28);transform:translateY(-1px)}
+.funnel-bar-label{font-weight:700;font-size:12px;letter-spacing:.05em;text-transform:uppercase;flex-shrink:0}
+.funnel-bar-stats{display:inline-flex;gap:14px;align-items:baseline;font-size:11px;flex-shrink:0}
+.funnel-bar-count{font-size:20px;font-weight:700;letter-spacing:-.02em}
+.funnel-bar-pct{opacity:.85;font-size:10.5px;font-weight:500}
+.funnel-arrow{display:flex;justify-content:center;align-items:center;width:100%;padding:3px 0;font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);position:relative;line-height:1}
+.funnel-arrow::before{content:'';position:absolute;left:50%;top:50%;width:1px;height:100%;background:#cbd5e1;transform:translate(-50%,-50%);z-index:0}
+.funnel-arrow span{background:#fff;padding:0 10px;position:relative;z-index:1}
+.funnel-arrow strong{color:var(--navy);margin-left:5px;font-weight:700}
 .funnel-side{display:flex;justify-content:center;margin-top:14px;padding:10px;background:rgba(245,158,11,.08);border:1px dashed var(--amber);border-radius:6px;font-family:'Space Mono',monospace;font-size:11px;color:#92400e}
 .funnel-unmapped{display:flex;justify-content:center;margin-top:8px;padding:8px;background:rgba(107,126,150,.08);border:1px dashed var(--muted);border-radius:6px;font-family:'Space Mono',monospace;font-size:10px;color:var(--muted)}
 
@@ -514,10 +516,13 @@ var META  = /*INJECT_META*/null  || {"refreshed_at":"","opps_count":0,"acts_coun
 // Anything matching no band and no side bucket appears in the "(unmapped)" call-out.
 var FUNNEL_CONFIG = {
   bands: [
-    { label: 'Entered',    matches: ['Entered'] },
-    { label: 'VOB',        matches: ['VOB:'],         excludeIfContains: ['Refer Out'] },
-    { label: 'Pre-Screen', matches: ['Pre-Screen:'],  excludeIfContains: ['Refer Out'] },
-    { label: 'Priority',   matches: ['Priority:'] }
+    // Note: `label` is what shows in the UI; `matches` is what the pipeline checks
+    // against Sunwave's stage values. Sunwave's stage is literally "Entered", but
+    // we display "Entered, not touched" because that's what it semantically means.
+    { label: 'Entered, not touched', matches: ['Entered'] },
+    { label: 'VOB',                  matches: ['VOB:'],         excludeIfContains: ['Refer Out'] },
+    { label: 'Pre-Screen',           matches: ['Pre-Screen:'],  excludeIfContains: ['Refer Out'] },
+    { label: 'Priority',             matches: ['Priority:'] }
   ],
   sideBucket: { label: 'Refer Out', matches: ['Refer Out'] },
   unmatchedLabel: '(unmapped)'
@@ -977,21 +982,29 @@ function renderFunnel(opps){
   });
 
   var entered = bandCounts[FUNNEL_CONFIG.bands[0].label] || 0;
-  // Compute max band width for visual scaling
   var bandValues = FUNNEL_CONFIG.bands.map(function(b){ return bandCounts[b.label] || 0; });
   var maxBand = Math.max.apply(null, bandValues.concat([1]));
+
+  // Cube-root scaling with 40% floor — keeps a 76→1 drop visible as a taper
+  // rather than collapsing the small bands into invisible slivers.
+  // Width range: 40% (smallest) → 100% (largest).
+  function bandWidth(count){
+    if (count <= 0 || maxBand <= 0) return 40;
+    var ratio = Math.cbrt(count) / Math.cbrt(maxBand);
+    return Math.round(40 + ratio * 60);
+  }
 
   var html = '<div class="funnel">';
   FUNNEL_CONFIG.bands.forEach(function(b, idx){
     var count = bandCounts[b.label] || 0;
-    var width = clamp(Math.round((count / maxBand) * 100), 18, 100);
+    var width = bandWidth(count);
     var pctEntered = entered > 0 ? (count / entered * 100).toFixed(0) : '—';
     html += '<div class="funnel-band">';
     html += '  <div class="funnel-bar" style="width:' + width + '%">';
     html += '    <span class="funnel-bar-label">' + esc(b.label) + '</span>';
     html += '    <span class="funnel-bar-stats">';
     html += '      <span class="funnel-bar-count">' + count + '</span>';
-    if (idx > 0) html += '<span class="funnel-bar-pct">' + pctEntered + '% of Entered</span>';
+    if (idx > 0) html += '<span class="funnel-bar-pct">' + pctEntered + '% of top</span>';
     html += '    </span>';
     html += '  </div>';
     html += '</div>';
@@ -999,7 +1012,7 @@ function renderFunnel(opps){
     if (idx < FUNNEL_CONFIG.bands.length - 1){
       var nextCount = bandCounts[FUNNEL_CONFIG.bands[idx+1].label] || 0;
       var conv = (count > 0) ? (nextCount / count * 100).toFixed(0) + '%' : '—';
-      html += '<div class="funnel-arrow">' + esc(b.label) + ' → ' + esc(FUNNEL_CONFIG.bands[idx+1].label) + ': <strong>' + conv + '</strong></div>';
+      html += '<div class="funnel-arrow"><span>' + esc(b.label) + ' \u2192 ' + esc(FUNNEL_CONFIG.bands[idx+1].label) + ': <strong>' + conv + '</strong></span></div>';
     }
   });
   html += '</div>';
