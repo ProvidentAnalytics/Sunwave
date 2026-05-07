@@ -12,6 +12,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"></script>
 <script>if(!window.msal){document.write('<script src="https://unpkg.com/@azure/msal-browser@3.10.0/lib/msal-browser.min.js"><\/script>');}</script>
 <style>
@@ -93,6 +94,10 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .card-title{font-size:12.5px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.04em}
 .card-sub{font-size:10.5px;color:var(--muted);margin-top:3px;font-weight:400}
 .card-actions{display:flex;gap:6px;flex-wrap:wrap}
+.card-act-btn{padding:6px 12px;border:1px solid var(--navy);background:#fff;color:var(--navy);border-radius:4px;font-family:'Space Mono',monospace;font-size:10.5px;font-weight:700;cursor:pointer;letter-spacing:.04em;transition:all .12s;white-space:nowrap}
+.card-act-btn:hover{background:var(--navy);color:#fff}
+.card-act-btn.primary{background:var(--navy);color:#fff}
+.card-act-btn.primary:hover{background:#0d4d72}
 .card-act-btn{padding:4px 9px;border:1px solid var(--navy);background:#fff;color:var(--navy);border-radius:4px;font-family:'Space Mono',monospace;font-size:9.5px;font-weight:700;cursor:pointer;letter-spacing:.04em;transition:all .12s;text-transform:uppercase}
 .card-act-btn:hover{background:var(--navy);color:#fff}
 .card-act-btn.active{background:var(--navy);color:#fff}
@@ -140,6 +145,9 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 
 /* Timeline expand row */
 .tl-detail{padding:12px 16px;background:#f8fafc;border-left:3px solid var(--navy);border-radius:0 6px 6px 0;margin:6px 0}
+.tl-section-h{font-family:'Space Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--navy);padding:8px 0 4px;border-bottom:1px solid var(--border);margin-top:8px}
+.tl-section-h:first-of-type{margin-top:0}
+.tl-empty-msg{padding:8px 0;color:var(--muted);font-style:italic;font-size:11.5px;font-family:'DM Sans',sans-serif}
 .tl-event{padding:7px 0;border-bottom:1px dashed var(--border);font-size:11.5px}
 .tl-event:last-child{border-bottom:none}
 .tl-date{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);margin-right:9px}
@@ -1223,25 +1231,10 @@ function buildOverview(){
     html += '<tr><td>'+esc(o.name)+'</td><td><span class="badge b-green">'+(o.admit?fmt(pd(o.admit)):'—')+'</span></td><td>'+esc(closer)+'</td><td style="color:var(--muted);font-size:11px">'+esc(o.rep||'—')+'</td></tr>';
   });
   html += '</tbody></table></div></div>';
+  html += '</div>';   // close g3 — leaderboard + recent admits row complete
 
   // Stuck opportunities — active (not finalized), with both date metrics
-  var stuck = OPPS.filter(function(o){
-    var oc = o.outcome;
-    if (oc === 'Lost' || oc === 'Abandoned' || oc === 'Admitted' || oc === 'AdmittedLegacy') return false;
-    if (!outcomeMatch(o)) return false;
-    var c = pd(o.co); if (!c) return false;
-    var oacts = ACTS.filter(function(a){ return a.oid === o.id && isHuman(a); });
-    // Sort newest-first to find last toucher
-    oacts.sort(function(a,b){ return (pd(b.date)||new Date(0)) - (pd(a.date)||new Date(0)); });
-    var lastDate = oacts.length ? pd(oacts[0].date) : null;
-    var lastBy = oacts.length ? oacts[0].by : '';
-    o._created = c;
-    o._lastTouchDate = lastDate;
-    o._lastBy = lastBy;
-    o._daysCreated = Math.floor((now - c) / 86400000);
-    o._daysTouch = lastDate ? Math.floor((now - lastDate) / 86400000) : null;
-    return true;
-  }).sort(function(a,b){ return b._daysCreated - a._daysCreated; });
+  var stuck = computeStuckOpps(now);
 
   function dayBadge(d){
     if (d == null) return '<span class="badge b-grey">—</span>';
@@ -1249,9 +1242,21 @@ function buildOverview(){
     return '<span class="badge ' + cls + '">' + d + 'd</span>';
   }
 
-  // Stuck Opportunities — full-width card outside of g2 grid
-  html += '<div class="card"><div class="card-h"><div><div class="card-title">Stuck Opportunities (' + stuck.length + ')</div><div class="card-sub">Active · sorted by days since created · click any row to expand history · color: amber @14d, red @30d</div></div></div>';
-  html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Patient</th><th>Outcome</th><th>Stage</th><th>Created</th><th>Last Touch</th><th class="num">Since Created</th><th class="num">Since Touch</th><th>Last Toucher</th></tr></thead><tbody>';
+  var anyExpanded = stuck.slice(0, 50).some(function(o){ return STUCK_EXPANDED[o.id]; });
+  var toggleLbl = anyExpanded ? 'Collapse all' : 'Expand all';
+
+  // Stuck Opportunities — full-width card with toolbar
+  html += '<div class="card" id="stuck-card">';
+  html += '<div class="card-h">';
+  html +=   '<div><div class="card-title">Stuck Opportunities (' + stuck.length + ')</div>';
+  html +=   '<div class="card-sub">Active · sorted by days since created · click any row to expand · color: amber @14d, red @30d</div></div>';
+  html +=   '<div class="card-actions">';
+  html +=     '<button id="stuck-toggle-all-btn" class="card-act-btn" onclick="stuckToggleAll()">' + toggleLbl + '</button>';
+  html +=     '<button class="card-act-btn" onclick="stuckExportExcel()">Export Excel</button>';
+  html +=     '<button class="card-act-btn" onclick="stuckExportPNG()">Export PNG</button>';
+  html +=   '</div>';
+  html += '</div>';
+  html += '<div class="tbl-wrap"><table class="tbl" id="stuck-table"><thead><tr><th>Patient</th><th>Outcome</th><th>Stage</th><th>Created</th><th>Last Touch</th><th class="num">Since Created</th><th class="num">Since Touch</th><th>Last Toucher</th></tr></thead><tbody>';
   if (!stuck.length){
     html += '<tr><td colspan="8" class="empty">No active opportunities.</td></tr>';
   } else {
@@ -1267,7 +1272,7 @@ function buildOverview(){
         '<td class="num">'+dayBadge(o._daysTouch)+'</td>'+
         '<td style="color:var(--muted);font-size:11px">'+esc(o._lastBy||'—')+'</td>'+
       '</tr>';
-      // Hidden detail row — full activity history
+      // Hidden detail row — Tasks + Activities
       html += '<tr id="stuck-detail-'+esc(o.id)+'" style="display:'+(STUCK_EXPANDED[o.id]?'table-row':'none')+'"><td colspan="8" style="padding:0">'+
         renderStuckDetail(o)+
       '</td></tr>';
@@ -1278,6 +1283,7 @@ function buildOverview(){
   }
   html += '</tbody></table></div></div>';
 
+  // Open CRM Tasks — full width, BELOW Stuck Opportunities (per Vadim's request)
   var openTasks = TASKS.filter(function(t){ return t.is_open; }).slice().sort(function(a,b){
     return (pd(a.due)||new Date(8e15)) - (pd(b.due)||new Date(8e15));
   });
@@ -1328,36 +1334,96 @@ function buildOverview(){
   ], 'bar');
 }
 
-// ── Stuck Opportunities — expandable history row ──────────────────────────
-function renderStuckDetail(o){
-  var events = ACTS.filter(function(a){ return a.oid === o.id; });
-  // Newest-first chronological order
-  events.sort(function(a,b){ return (pd(b.date)||new Date(0)) - (pd(a.date)||new Date(0)); });
+// ── Stuck Opportunities — helper, expandable detail, toggles, exports ────
 
+// Compute & decorate the stuck list (used by both render and Excel export)
+function computeStuckOpps(now){
+  now = now || new Date();
+  var list = OPPS.filter(function(o){
+    var oc = o.outcome;
+    if (oc === 'Lost' || oc === 'Abandoned' || oc === 'Admitted' || oc === 'AdmittedLegacy') return false;
+    if (!outcomeMatch(o)) return false;
+    var c = pd(o.co); if (!c) return false;
+    return true;
+  });
+  list.forEach(function(o){
+    var c = pd(o.co);
+    var oacts = ACTS.filter(function(a){ return a.oid === o.id && isHuman(a); });
+    oacts.sort(function(a,b){ return (pd(b.date)||new Date(0)) - (pd(a.date)||new Date(0)); });
+    var lastDate = oacts.length ? pd(oacts[0].date) : null;
+    o._created = c;
+    o._lastTouchDate = lastDate;
+    o._lastBy = oacts.length ? oacts[0].by : '';
+    o._daysCreated = c ? Math.floor((now - c) / 86400000) : null;
+    o._daysTouch = lastDate ? Math.floor((now - lastDate) / 86400000) : null;
+  });
+  list.sort(function(a,b){ return (b._daysCreated||0) - (a._daysCreated||0); });
+  return list;
+}
+
+function renderStuckDetail(o){
+  var now = new Date();
   var html = '<div class="tl-detail">';
-  html += '<div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-family:\'Space Mono\',monospace">'
+
+  // Meta header line
+  html += '<div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-family:\'Space Mono\',monospace">'
     + 'Created: ' + (o._created ? fmt(o._created) : '—')
     + ' \u00B7 Outcome: ' + esc(o.outcome || '—')
     + ' \u00B7 Stage: ' + esc(o.stage || '—')
+    + ' \u00B7 LOC: ' + esc(o.loc || '—')
     + ' \u00B7 Insurance: ' + esc(o.ins || '—')
     + ' \u00B7 Referral: ' + esc(o.ref || '—')
     + ' \u00B7 Original Rep: ' + esc(o.rep || '—')
-    + ' \u00B7 ' + events.length + ' events</div>';
-  if (!events.length){
-    html += '<div style="color:var(--muted);font-style:italic;font-size:11.5px">No events recorded for this opportunity yet.</div></div>';
-    return html;
-  }
-  events.forEach(function(a){
-    var d = pd(a.date);
-    html += '<div class="tl-event">';
-    html += '<span class="tl-date">' + (d ? fmtDT(d) : '') + '</span>';
-    html += '<span class="tl-type">' + esc(a.type) + '</span>';
-    if (a.by) html += '<span class="tl-by">' + esc(a.by) + '</span> ';
-    if (a.subj) html += '<strong>' + esc(a.subj) + '</strong>' + (a.text ? ' \u00B7 ' : ' ');
-    if (a.text) html += esc(a.text.length > 220 ? a.text.slice(0,220) + '\u2026' : a.text);
-    if (a.wf) html += ' <span style="color:var(--muted);font-size:10.5px;font-family:Space Mono,monospace">[' + esc(a.wf) + ']</span>';
-    html += '</div>';
+    + '</div>';
+
+  // ── Tasks section ──
+  var oppTasks = TASKS.filter(function(t){ return t.aid === o.id; });
+  oppTasks.sort(function(a,b){
+    if (a.is_open !== b.is_open) return a.is_open ? -1 : 1;
+    return (pd(a.due)||new Date(8e15)) - (pd(b.due)||new Date(8e15));
   });
+
+  html += '<div class="tl-section-h">Tasks (' + oppTasks.length + ')</div>';
+  if (!oppTasks.length){
+    html += '<div class="tl-empty-msg">no task is assigned to this opportunity</div>';
+  } else {
+    oppTasks.forEach(function(t){
+      var due = pd(t.due);
+      var overdue = t.is_open && due && due < now;
+      var statusCls = !t.is_open ? 'b-green' : (overdue ? 'b-red' : 'b-amber');
+      var statusLbl = !t.is_open ? esc(t.status || 'CLOSED').toUpperCase() : (overdue ? 'OVERDUE' : 'OPEN');
+      html += '<div class="tl-event">';
+      html += '<span class="tl-date">' + (due ? fmt(due) : '—') + '</span>';
+      html += '<span class="badge ' + statusCls + '" style="margin-right:7px">' + statusLbl + '</span>';
+      if (t.task_type) html += '<span class="tl-type">' + esc(t.task_type) + '</span>';
+      if (t.assigned) html += '<span class="tl-by">' + esc(t.assigned) + '</span> ';
+      if (t.subject) html += '<strong>' + esc(t.subject) + '</strong>';
+      if (t.text) html += ' \u00B7 ' + esc(t.text.length > 200 ? t.text.slice(0,200) + '\u2026' : t.text);
+      html += '</div>';
+    });
+  }
+
+  // ── Activities section (non-Task) ──
+  var activities = ACTS.filter(function(a){ return a.oid === o.id && a.type !== 'Task'; });
+  activities.sort(function(a,b){ return (pd(b.date)||new Date(0)) - (pd(a.date)||new Date(0)); });
+
+  html += '<div class="tl-section-h">Activities (' + activities.length + ')</div>';
+  if (!activities.length){
+    html += '<div class="tl-empty-msg">No activities recorded for this opportunity yet.</div>';
+  } else {
+    activities.forEach(function(a){
+      var d = pd(a.date);
+      html += '<div class="tl-event">';
+      html += '<span class="tl-date">' + (d ? fmtDT(d) : '') + '</span>';
+      html += '<span class="tl-type">' + esc(a.type) + '</span>';
+      if (a.by) html += '<span class="tl-by">' + esc(a.by) + '</span> ';
+      if (a.subj) html += '<strong>' + esc(a.subj) + '</strong>' + (a.text ? ' \u00B7 ' : ' ');
+      if (a.text) html += esc(a.text.length > 220 ? a.text.slice(0,220) + '\u2026' : a.text);
+      if (a.wf) html += ' <span style="color:var(--muted);font-size:10.5px;font-family:Space Mono,monospace">[' + esc(a.wf) + ']</span>';
+      html += '</div>';
+    });
+  }
+
   html += '</div>';
   return html;
 }
@@ -1366,6 +1432,86 @@ function toggleStuckDetail(oid){
   STUCK_EXPANDED[oid] = !STUCK_EXPANDED[oid];
   var el = document.getElementById('stuck-detail-' + oid);
   if (el) el.style.display = STUCK_EXPANDED[oid] ? 'table-row' : 'none';
+  // Update toggle-all button label to reflect new state
+  syncStuckToggleAllLabel();
+}
+
+function syncStuckToggleAllLabel(){
+  var btn = document.getElementById('stuck-toggle-all-btn');
+  if (!btn) return;
+  var rows = document.querySelectorAll('[id^="stuck-detail-"]');
+  var anyOpen = false;
+  rows.forEach(function(r){ if (r.style.display === 'table-row') anyOpen = true; });
+  btn.textContent = anyOpen ? 'Collapse all' : 'Expand all';
+}
+
+function stuckToggleAll(){
+  var rows = document.querySelectorAll('[id^="stuck-detail-"]');
+  var anyOpen = false;
+  rows.forEach(function(r){ if (r.style.display === 'table-row') anyOpen = true; });
+  var newDisplay = anyOpen ? 'none' : 'table-row';
+  rows.forEach(function(r){
+    r.style.display = newDisplay;
+    var oid = r.id.replace('stuck-detail-', '');
+    STUCK_EXPANDED[oid] = (newDisplay === 'table-row');
+  });
+  syncStuckToggleAllLabel();
+}
+
+function stuckExportExcel(){
+  if (typeof XLSX === 'undefined'){ alert('Excel export library not available.'); return; }
+  var stuck = computeStuckOpps(new Date());
+  var rows = stuck.map(function(o){
+    return {
+      'Patient':            o.name || '',
+      'Outcome':            o.outcome || '',
+      'Stage':              o.stage || '',
+      'LOC':                o.loc || '',
+      'Created':            o._created ? fmt(o._created) : '',
+      'Last Touch':         o._lastTouchDate ? fmt(o._lastTouchDate) : '',
+      'Days Since Created': o._daysCreated == null ? '' : o._daysCreated,
+      'Days Since Touch':   o._daysTouch == null ? '' : o._daysTouch,
+      'Last Toucher':       o._lastBy || '',
+      'Original Rep':       o.rep || '',
+      'Insurance':          o.ins || '',
+      'Referral':           o.ref || ''
+    };
+  });
+  var ws = XLSX.utils.json_to_sheet(rows);
+  // Reasonable column widths
+  ws['!cols'] = [
+    {wch:22},{wch:12},{wch:18},{wch:12},{wch:11},{wch:11},
+    {wch:18},{wch:18},{wch:22},{wch:22},{wch:22},{wch:22}
+  ];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Stuck Opportunities');
+  var fname = 'stuck-opportunities-' + new Date().toISOString().slice(0,10) + '.xlsx';
+  XLSX.writeFile(wb, fname);
+}
+
+function stuckExportPNG(){
+  var card = document.getElementById('stuck-card');
+  if (!card){ alert('Stuck Opportunities card not found.'); return; }
+  if (typeof html2canvas !== 'function'){
+    alert('PNG export library not loaded yet. Try refreshing the page.');
+    return;
+  }
+  // Hide the action buttons during capture so the PNG is clean
+  var actions = card.querySelector('.card-actions');
+  var prevDisplay = actions ? actions.style.display : '';
+  if (actions) actions.style.display = 'none';
+  html2canvas(card, { backgroundColor: '#ffffff', scale: 2, logging: false }).then(function(canvas){
+    if (actions) actions.style.display = prevDisplay;
+    var link = document.createElement('a');
+    link.download = 'stuck-opportunities-' + new Date().toISOString().slice(0,10) + '.png';
+    link.href = canvas.toDataURL('image/png');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }).catch(function(err){
+    if (actions) actions.style.display = prevDisplay;
+    alert('PNG export failed: ' + err.message);
+  });
 }
 
 // ──────────────────────────────────────────────────────────────────────────
