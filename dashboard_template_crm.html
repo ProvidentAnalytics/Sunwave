@@ -122,6 +122,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .b-red{background:rgba(239,68,68,.15);color:var(--red)}
 .b-green{background:rgba(16,185,129,.15);color:var(--green)}
 .b-blue{background:rgba(59,130,246,.15);color:var(--blue)}
+.b-grey{background:rgba(107,126,150,.12);color:var(--muted)}
 .b-muted{background:rgba(107,126,150,.15);color:var(--muted)}
 .b-purple{background:rgba(139,92,246,.15);color:var(--purple)}
 .b-teal{background:var(--teal-dim);color:var(--navy)}
@@ -797,13 +798,27 @@ function isMatrixRowCollapsed(matrixId, rowId){
 // ── Data labels plugin — draws values (and % when applicable) on bars/lines/pies ──
 // Inline plugin so we don't pull in chartjs-plugin-datalabels CDN.
 //
+// Placement strategy:
+//   Stacked bars  → TOPMOST segment of each (stack, x-index) gets a label
+//                   OUTSIDE-ABOVE the bar (dark navy text + white halo — always
+//                   readable on any background). Inner segments get an INSIDE
+//                   label (white text + dark shadow) IF the segment is tall and
+//                   wide enough to fit the text; otherwise the label is dropped
+//                   on that inner segment (no visual collision).
+//   Non-stacked   → Label always OUTSIDE-ABOVE.
+//   Line charts   → Label OUTSIDE-ABOVE each point with halo.
+//   Pies/doughnut → Label CENTERED in slice (white text + shadow).
+//
 // Percentage logic:
-//   - If a dataset has label "Created" or "Total" (case-insensitive), it is treated
-//     as the 100% baseline. Other datasets show "value (% of baseline)" at the same
-//     x-index. The baseline dataset itself shows only the value (no % — would be 100%).
-//   - For pies/doughnuts, % is always vs the dataset's own total.
-//   - If no baseline series exists, fall back to per-stack total for stacked bars,
-//     or value-only for non-stacked bars / lines.
+//   - If a dataset has label "Created" or "Total" (case-insensitive), it is the
+//     100% baseline. Other datasets append "(% of baseline)" at the same x-index.
+//   - Else, fall back to per-stack total for stacked bars.
+//   - Pie/doughnut % is always vs the dataset's own total.
+//
+// Width logic:
+//   - Try the full "value (%)" label first.
+//   - If it doesn't fit in the available width, try just "value".
+//   - If even that doesn't fit, drop the label.
 var dataLabelsPlugin = {
   id: 'dataLabels',
   afterDatasetsDraw: function(chart){
@@ -811,93 +826,144 @@ var dataLabelsPlugin = {
     var type = chart.config.type;
     var datasets = chart.data.datasets;
 
-    // Find a baseline dataset (Created / Total)
+    // Find baseline dataset (Created / Total)
     var baselineIdx = -1;
     for (var bi = 0; bi < datasets.length; bi++){
       var lbl = (datasets[bi].label || '').toLowerCase();
       if (lbl === 'created' || lbl === 'total'){ baselineIdx = bi; break; }
     }
 
-    // For stacked bars without a baseline we need per-stack totals to compute %
-    var stackTotalsByIdx = null;
     var isStackedBar = type === 'bar' && chart.options && chart.options.scales
                        && chart.options.scales.x && chart.options.scales.x.stacked;
+
+    // Per-stack totals (used when no baseline series)
+    var stackTotalsByIdx = null;
     if (isStackedBar && baselineIdx < 0){
       stackTotalsByIdx = {};
       datasets.forEach(function(ds, dsIdx){
         if (chart.getDatasetMeta(dsIdx).hidden) return;
-        var stackKey = ds.stack || ('s' + dsIdx);
+        var stack = ds.stack || ('s' + dsIdx);
         ds.data.forEach(function(v, i){
-          var k = stackKey + '|' + i;
+          var k = stack + '|' + i;
           stackTotalsByIdx[k] = (stackTotalsByIdx[k] || 0) + (Number(v) || 0);
         });
       });
     }
 
+    // Topmost segment per (stack, x-index) — segment with smallest y (highest visually)
+    var topmostSeg = {};
+    if (isStackedBar){
+      datasets.forEach(function(ds, dsIdx){
+        var meta = chart.getDatasetMeta(dsIdx);
+        if (meta.hidden) return;
+        var stack = ds.stack || ('s' + dsIdx);
+        meta.data.forEach(function(elem, i){
+          if (!Number(ds.data[i])) return;
+          var key = stack + '|' + i;
+          var existing = topmostSeg[key];
+          if (!existing || elem.y < existing.y){
+            topmostSeg[key] = { dsIdx: dsIdx, y: elem.y };
+          }
+        });
+      });
+    }
+
+    function buildLabel(v, i, dsIdx, ds){
+      if (dsIdx === baselineIdx) return String(v);
+      if (baselineIdx >= 0){
+        var den = Number(datasets[baselineIdx].data[i]);
+        if (den > 0) return v + ' (' + Math.round(v/den*100) + '%)';
+      } else if (stackTotalsByIdx){
+        var stack = ds.stack || ('s' + dsIdx);
+        var tot = stackTotalsByIdx[stack + '|' + i];
+        if (tot > 0 && tot !== v) return v + ' (' + Math.round(v/tot*100) + '%)';
+      }
+      return String(v);
+    }
+
+    function drawHaloText(text, x, y, baseline){
+      // Dark navy with white halo — readable on any background
+      ctx.textBaseline = baseline || 'bottom';
+      ctx.fillStyle = '#fff';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#fff';
+      ctx.lineJoin = 'round';
+      ctx.miterLimit = 2;
+      // Stroke gives the halo
+      ctx.strokeText(text, x, y);
+      ctx.fillStyle = '#0a3d5c';
+      ctx.fillText(text, x, y);
+    }
+
     datasets.forEach(function(ds, dsIdx){
       var meta = chart.getDatasetMeta(dsIdx);
       if (meta.hidden) return;
-      var stackKey = ds.stack || ('s' + dsIdx);
-      var isBaseline = dsIdx === baselineIdx;
+      var stack = ds.stack || ('s' + dsIdx);
 
       meta.data.forEach(function(elem, i){
         var v = Number(ds.data[i]);
         if (!v || isNaN(v)) return;
         var pos = elem.tooltipPosition ? elem.tooltipPosition() : { x:elem.x, y:elem.y };
 
-        // ── Pie / doughnut: % of dataset total, white text inside slice ──
+        // ── Pie / doughnut ──
         if (type === 'pie' || type === 'doughnut'){
           var dsTotal = ds.data.reduce(function(a,b){return a+(Number(b)||0)},0);
-          var pctStr = dsTotal > 0 ? ' (' + (v/dsTotal*100).toFixed(0) + '%)' : '';
+          var pctStr = dsTotal > 0 ? ' (' + Math.round(v/dsTotal*100) + '%)' : '';
           ctx.save();
           ctx.fillStyle = '#fff';
           ctx.font = '700 11px "Space Mono", monospace';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.shadowColor = 'rgba(0,0,0,0.5)';
+          ctx.shadowColor = 'rgba(0,0,0,0.55)';
           ctx.shadowBlur = 3;
           ctx.fillText(v + pctStr, pos.x, pos.y);
           ctx.restore();
           return;
         }
 
-        // ── Bar / line: build label string ──
-        var label = String(v);
-        if (!isBaseline){
-          if (baselineIdx >= 0){
-            // % of Created/Total at this x-index
-            var den = Number(datasets[baselineIdx].data[i]);
-            if (den > 0){
-              label = v + ' (' + (v/den*100).toFixed(0) + '%)';
-            }
-          } else if (stackTotalsByIdx){
-            // % of stack total (no baseline available)
-            var k = stackKey + '|' + i;
-            var tot = stackTotalsByIdx[k];
-            if (tot > 0 && datasets.length > 1 && tot !== v){
-              label = v + ' (' + (v/tot*100).toFixed(0) + '%)';
-            }
-          }
-        }
-
+        // Common font setup for bar/line
         ctx.save();
-        ctx.fillStyle = '#0a3d5c';
         ctx.font = '600 9.5px "Space Mono", monospace';
         ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
 
-        // For stacked bars, position label INSIDE the segment (each stack member labeled)
-        if (type === 'bar' && isStackedBar){
+        var fullLabel = buildLabel(v, i, dsIdx, ds);
+        var shortLabel = String(v);
+
+        if (type === 'bar'){
+          var barW = elem.width || 24;
           var barH = (elem.base != null) ? Math.abs(elem.base - elem.y) : 0;
-          if (barH >= 14){
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = '#fff';
-            ctx.shadowColor = 'rgba(0,0,0,0.4)';
-            ctx.shadowBlur = 2;
-            ctx.fillText(label, pos.x, (elem.y + (elem.base || elem.y)) / 2);
+          var fullW = ctx.measureText(fullLabel).width;
+          var shortW = ctx.measureText(shortLabel).width;
+
+          if (isStackedBar){
+            var key = stack + '|' + i;
+            var isTopmost = topmostSeg[key] && topmostSeg[key].dsIdx === dsIdx;
+            if (isTopmost){
+              // OUTSIDE-ABOVE: pick label that fits (with some overflow tolerance)
+              var label = (fullW < barW * 1.6) ? fullLabel : shortLabel;
+              drawHaloText(label, pos.x, elem.y - 4, 'bottom');
+            } else if (barH >= 18){
+              // INSIDE non-topmost: white text + dark shadow — pick a label that fits
+              var labelInside = '';
+              if (fullW + 4 < barW) labelInside = fullLabel;
+              else if (shortW + 4 < barW) labelInside = shortLabel;
+              if (labelInside){
+                ctx.fillStyle = '#fff';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = 'rgba(0,0,0,0.6)';
+                ctx.shadowBlur = 3;
+                ctx.fillText(labelInside, pos.x, (elem.y + elem.base) / 2);
+              }
+            }
+            // else: skip — segment too short for any label
+          } else {
+            // Non-stacked bar — outside-above
+            var label2 = (fullW < barW * 1.6) ? fullLabel : shortLabel;
+            drawHaloText(label2, pos.x, elem.y - 4, 'bottom');
           }
         } else {
-          ctx.fillText(label, pos.x, pos.y - 3);
+          // Line / scatter — outside-above each point
+          drawHaloText(fullLabel, pos.x, pos.y - 5, 'bottom');
         }
         ctx.restore();
       });
@@ -921,7 +987,7 @@ function renderTrendChart(canvasId, labels, datasets, type){
     data: { labels: labels, datasets: datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
-      layout: { padding: { top: 18 } },
+      layout: { padding: { top: 24 } },
       scales: {
         x: { stacked: type === 'bar', ticks:{ font:{size:9}, maxTicksLimit:14 } },
         y: { stacked: type === 'bar', beginAtZero: true, ticks:{ font:{size:10} } }
@@ -1157,29 +1223,43 @@ function buildOverview(){
   });
   html += '</tbody></table></div></div>';
 
-  // Stuck opportunities
+  // Stuck opportunities — active (not finalized), with both date metrics
   var stuck = OPPS.filter(function(o){
-    if (!isInPipe(o)) return false;
+    var oc = o.outcome;
+    // Active = not finalized: drop Lost / Abandoned / Admitted / AdmittedLegacy
+    if (oc === 'Lost' || oc === 'Abandoned' || oc === 'Admitted' || oc === 'AdmittedLegacy') return false;
     if (!outcomeMatch(o)) return false;
     var c = pd(o.co); if (!c) return false;
-    if ((now - c) / 86400000 < 7) return false;
     var oacts = ACTS.filter(function(a){ return a.oid === o.id && isHuman(a); });
     var lastDate = null;
     oacts.forEach(function(a){ var d=pd(a.date); if(d && (!lastDate || d>lastDate)) lastDate=d; });
-    var ageDays = lastDate ? (now-lastDate)/86400000 : (now-c)/86400000;
-    if (ageDays < 7) return false;
-    o._stuck = Math.floor(ageDays);
-    o._lastTouch = lastDate ? fmt(lastDate) : '—';
+    o._created = c;
+    o._lastTouchDate = lastDate;
+    o._daysCreated = Math.floor((now - c) / 86400000);
+    o._daysTouch = lastDate ? Math.floor((now - lastDate) / 86400000) : null;
     return true;
-  }).sort(function(a,b){ return b._stuck - a._stuck; });
+  }).sort(function(a,b){ return b._daysCreated - a._daysCreated; });
+
+  function dayBadge(d){
+    if (d == null) return '<span class="badge b-grey">—</span>';
+    var cls = d >= 30 ? 'b-red' : (d >= 14 ? 'b-amber' : 'b-blue');
+    return '<span class="badge ' + cls + '">' + d + 'd</span>';
+  }
 
   html += '<div class="g2">';
-  html += '<div class="card"><div class="card-h"><div><div class="card-title">Stuck Opportunities (' + stuck.length + ')</div><div class="card-sub">Active · &gt;7d no human activity · amber @14d · red @30d</div></div></div>';
-  html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Patient</th><th>Stage</th><th>Last Touch</th><th>Rep</th><th class="num">Days</th></tr></thead><tbody>';
-  if (!stuck.length) html += '<tr><td colspan="5" class="empty">No stuck opportunities.</td></tr>';
+  html += '<div class="card"><div class="card-h"><div><div class="card-title">Stuck Opportunities (' + stuck.length + ')</div><div class="card-sub">Active · sorted by days since created · color: amber @14d, red @30d</div></div></div>';
+  html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Patient</th><th>Stage</th><th>Created</th><th>Last Touch</th><th class="num">Since Created</th><th class="num">Since Touch</th><th>Rep</th></tr></thead><tbody>';
+  if (!stuck.length) html += '<tr><td colspan="7" class="empty">No active opportunities.</td></tr>';
   stuck.slice(0,30).forEach(function(o){
-    var cls = o._stuck >= 30 ? 'b-red' : (o._stuck >= 14 ? 'b-amber' : 'b-blue');
-    html += '<tr><td>'+esc(o.name)+'</td><td>'+esc(o.stage)+'</td><td>'+esc(o._lastTouch)+'</td><td style="color:var(--muted);font-size:11px">'+esc(o.rep||'—')+'</td><td class="num"><span class="badge '+cls+'">'+o._stuck+'d</span></td></tr>';
+    html += '<tr>'+
+      '<td>'+esc(o.name)+'</td>'+
+      '<td>'+esc(o.stage)+'</td>'+
+      '<td>'+(o._created?fmt(o._created):'—')+'</td>'+
+      '<td>'+(o._lastTouchDate?fmt(o._lastTouchDate):'—')+'</td>'+
+      '<td class="num">'+dayBadge(o._daysCreated)+'</td>'+
+      '<td class="num">'+dayBadge(o._daysTouch)+'</td>'+
+      '<td style="color:var(--muted);font-size:11px">'+esc(o.rep||'—')+'</td>'+
+    '</tr>';
   });
   html += '</tbody></table></div></div>';
 
@@ -1563,7 +1643,7 @@ function renderBucketChart(canvasId, data, color){
     },
     options:{
       responsive:true, maintainAspectRatio:false,
-      layout:{ padding:{ top:18 } },
+      layout:{ padding:{ top:24 } },
       scales:{ x:{ ticks:{font:{size:9}} }, y:{ beginAtZero:true, ticks:{font:{size:9}} } },
       plugins:{ legend:{display:false} }
     },
