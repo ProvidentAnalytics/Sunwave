@@ -791,16 +791,33 @@ function isMatrixRowCollapsed(matrixId, rowId){
 
 // ── Data labels plugin — draws values (and % when applicable) on bars/lines/pies ──
 // Inline plugin so we don't pull in chartjs-plugin-datalabels CDN.
+//
+// Percentage logic:
+//   - If a dataset has label "Created" or "Total" (case-insensitive), it is treated
+//     as the 100% baseline. Other datasets show "value (% of baseline)" at the same
+//     x-index. The baseline dataset itself shows only the value (no % — would be 100%).
+//   - For pies/doughnuts, % is always vs the dataset's own total.
+//   - If no baseline series exists, fall back to per-stack total for stacked bars,
+//     or value-only for non-stacked bars / lines.
 var dataLabelsPlugin = {
   id: 'dataLabels',
   afterDatasetsDraw: function(chart){
     var ctx = chart.ctx;
     var type = chart.config.type;
     var datasets = chart.data.datasets;
-    var stackTotalsByIdx = null;
 
-    // For stacked bars we need per-stack totals to compute %
-    if (type === 'bar' && chart.options && chart.options.scales && chart.options.scales.x && chart.options.scales.x.stacked){
+    // Find a baseline dataset (Created / Total)
+    var baselineIdx = -1;
+    for (var bi = 0; bi < datasets.length; bi++){
+      var lbl = (datasets[bi].label || '').toLowerCase();
+      if (lbl === 'created' || lbl === 'total'){ baselineIdx = bi; break; }
+    }
+
+    // For stacked bars without a baseline we need per-stack totals to compute %
+    var stackTotalsByIdx = null;
+    var isStackedBar = type === 'bar' && chart.options && chart.options.scales
+                       && chart.options.scales.x && chart.options.scales.x.stacked;
+    if (isStackedBar && baselineIdx < 0){
       stackTotalsByIdx = {};
       datasets.forEach(function(ds, dsIdx){
         if (chart.getDatasetMeta(dsIdx).hidden) return;
@@ -816,14 +833,15 @@ var dataLabelsPlugin = {
       var meta = chart.getDatasetMeta(dsIdx);
       if (meta.hidden) return;
       var stackKey = ds.stack || ('s' + dsIdx);
+      var isBaseline = dsIdx === baselineIdx;
 
       meta.data.forEach(function(elem, i){
         var v = Number(ds.data[i]);
         if (!v || isNaN(v)) return;
         var pos = elem.tooltipPosition ? elem.tooltipPosition() : { x:elem.x, y:elem.y };
 
+        // ── Pie / doughnut: % of dataset total, white text inside slice ──
         if (type === 'pie' || type === 'doughnut'){
-          // Center label inside slice; white text
           var dsTotal = ds.data.reduce(function(a,b){return a+(Number(b)||0)},0);
           var pctStr = dsTotal > 0 ? ' (' + (v/dsTotal*100).toFixed(0) + '%)' : '';
           ctx.save();
@@ -838,13 +856,22 @@ var dataLabelsPlugin = {
           return;
         }
 
-        // Bar / line: label above the element with dark navy text
+        // ── Bar / line: build label string ──
         var label = String(v);
-        if (stackTotalsByIdx){
-          var k = stackKey + '|' + i;
-          var tot = stackTotalsByIdx[k];
-          if (tot > 0 && datasets.length > 1){
-            label = v + ' (' + (v/tot*100).toFixed(0) + '%)';
+        if (!isBaseline){
+          if (baselineIdx >= 0){
+            // % of Created/Total at this x-index
+            var den = Number(datasets[baselineIdx].data[i]);
+            if (den > 0){
+              label = v + ' (' + (v/den*100).toFixed(0) + '%)';
+            }
+          } else if (stackTotalsByIdx){
+            // % of stack total (no baseline available)
+            var k = stackKey + '|' + i;
+            var tot = stackTotalsByIdx[k];
+            if (tot > 0 && datasets.length > 1 && tot !== v){
+              label = v + ' (' + (v/tot*100).toFixed(0) + '%)';
+            }
           }
         }
 
@@ -854,20 +881,17 @@ var dataLabelsPlugin = {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
 
-        // For stacked bars, position label INSIDE the segment center (so each stack member gets its own label)
-        if (type === 'bar' && stackTotalsByIdx){
+        // For stacked bars, position label INSIDE the segment (each stack member labeled)
+        if (type === 'bar' && isStackedBar){
           var barH = (elem.base != null) ? Math.abs(elem.base - elem.y) : 0;
           if (barH >= 14){
-            // Inside segment, vertically centered
             ctx.textBaseline = 'middle';
             ctx.fillStyle = '#fff';
             ctx.shadowColor = 'rgba(0,0,0,0.4)';
             ctx.shadowBlur = 2;
             ctx.fillText(label, pos.x, (elem.y + (elem.base || elem.y)) / 2);
           }
-          // Skip label if segment too short to fit text
         } else {
-          // Non-stacked bar or line — label just above the element
           ctx.fillText(label, pos.x, pos.y - 3);
         }
         ctx.restore();
